@@ -8,7 +8,7 @@ import type {
   ProcessingState,
   VoronoiCell,
 } from '@/types';
-import { DEFAULT_SETTINGS } from '@/types';
+import { DEFAULT_SETTINGS, DEFAULT_LIGHT_SETTINGS, type LightSettings } from '@/types';
 import { useSettingsHistory } from './useSettingsHistory';
 import { loadImageToCanvas, type LoadedImage } from '@/lib/image/loader';
 import { detectEdges } from '@/lib/image/edge-detection';
@@ -58,8 +58,9 @@ export function useStainedGlass(): UseStainedGlassReturn {
   const [settings, setSettingsState] = useState<StainedGlassSettings>(DEFAULT_SETTINGS);
 
   // Sync settings state with history when undo/redo occurs
+  // Merge with defaults to handle new settings added after history was saved
   useEffect(() => {
-    setSettingsState(historySettings);
+    setSettingsState({ ...DEFAULT_SETTINGS, ...historySettings });
   }, [historySettings]);
   const [svgString, setSvgString] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
@@ -86,6 +87,11 @@ export function useStainedGlass(): UseStainedGlassReturn {
   const frameElementsRef = useRef<FrameElement[]>([]);
   // Ref for line settings to avoid triggering full reprocessing
   const lineSettingsRef = useRef({ lineWidth: DEFAULT_SETTINGS.lineWidth, lineColor: DEFAULT_SETTINGS.lineColor });
+  // Ref for lighting settings (SVG-only updates, no reprocessing needed)
+  const lightingSettingsRef = useRef<LightSettings>(DEFAULT_LIGHT_SETTINGS);
+
+  // Merge settings with defaults to handle missing properties
+  const safeSettings = { ...DEFAULT_SETTINGS, ...settings };
 
   // Extract processing-relevant settings (exclude view-only settings like showOriginal)
   // Note: lineWidth and lineColor are SVG-only settings, handled separately
@@ -110,7 +116,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
     frameHueShift,
     frameSaturation,
     frameBrightness,
-  } = settings ?? DEFAULT_SETTINGS;
+  } = safeSettings;
 
   // Ref for color settings to handle color-only updates separately
   const colorSettingsRef = useRef({
@@ -266,13 +272,14 @@ export function useStainedGlass(): UseStainedGlassReturn {
       // Cache cells for SVG-only updates
       coloredCellsRef.current = coloredCells;
 
-      // Generate SVG with frame elements (use ref for line settings to avoid dependency)
+      // Generate SVG with frame elements (use refs for line/lighting settings to avoid dependency)
       const svg = generateSVG(coloredCells, {
         lineWidth: lineSettingsRef.current.lineWidth,
         lineColor: lineSettingsRef.current.lineColor,
         width,
         height,
         frameElements: frameElementsRef.current,
+        lighting: lightingSettingsRef.current,
       });
 
       setSvgString(svg);
@@ -302,8 +309,16 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
   // Keep line settings ref in sync
   useEffect(() => {
-    lineSettingsRef.current = { lineWidth: settings.lineWidth, lineColor: settings.lineColor };
-  }, [settings.lineWidth, settings.lineColor]);
+    lineSettingsRef.current = {
+      lineWidth: settings?.lineWidth ?? DEFAULT_SETTINGS.lineWidth,
+      lineColor: settings?.lineColor ?? DEFAULT_SETTINGS.lineColor,
+    };
+  }, [settings?.lineWidth, settings?.lineColor]);
+
+  // Keep lighting settings ref in sync
+  useEffect(() => {
+    lightingSettingsRef.current = settings?.lighting ?? DEFAULT_LIGHT_SETTINGS;
+  }, [settings?.lighting]);
 
   // Keep color settings ref in sync
   useEffect(() => {
@@ -364,6 +379,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
       width,
       height,
       frameElements: frameResult.elements,
+      lighting: lightingSettingsRef.current,
     });
 
     setSvgString(svg);
@@ -423,6 +439,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
       width,
       height,
       frameElements: frameElementsRef.current,
+      lighting: lightingSettingsRef.current,
     });
 
     setSvgString(svg);
@@ -445,7 +462,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
     };
   }, [resampleColors]);
 
-  // Regenerate SVG only (for line width/color changes - no reprocessing needed)
+  // Regenerate SVG only (for line width/color/lighting changes - no reprocessing needed)
   const regenerateSVG = useCallback(() => {
     const loadedImage = loadedImageRef.current;
     const coloredCells = coloredCellsRef.current;
@@ -454,15 +471,16 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
     const { width, height } = loadedImage;
     const svg = generateSVG(coloredCells, {
-      lineWidth: settings.lineWidth,
-      lineColor: settings.lineColor,
+      lineWidth: settings?.lineWidth ?? DEFAULT_SETTINGS.lineWidth,
+      lineColor: settings?.lineColor ?? DEFAULT_SETTINGS.lineColor,
       width,
       height,
       frameElements: frameElementsRef.current,
+      lighting: settings?.lighting ?? DEFAULT_LIGHT_SETTINGS,
     });
 
     setSvgString(svg);
-  }, [settings.lineWidth, settings.lineColor]);
+  }, [settings?.lineWidth, settings?.lineColor, settings?.lighting]);
 
   // Debounced processing
   const debouncedProcess = useCallback(() => {

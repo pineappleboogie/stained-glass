@@ -28,13 +28,15 @@ import type {
   EdgeMethod,
   FrameStyle,
   SettingsSection,
+  LightPreset,
 } from '@/types';
 import { getDefaultsForSection } from '@/types';
 import { useRef, useState, useEffect } from 'react';
 import { PRESETS, applyPreset } from '@/lib/presets';
 import { getPalettesByCategory } from '@/lib/color-palettes';
 import { copySVGToClipboard } from '@/lib/svg/exporter';
-import { ImagePlus, SplitSquareHorizontal, Copy, Check, Download, Sun, Moon } from 'lucide-react';
+import { ImagePlus, SplitSquareHorizontal, Copy, Check, Download, Sun, Moon, Lightbulb } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
 
 interface ControlPanelProps {
@@ -747,6 +749,414 @@ export function ControlPanel({
                 disabled={disabled}
               />
             </div>
+          </div>
+        </section>
+
+        <Divider />
+
+        {/* Lighting Section */}
+        <section className="py-4">
+          <SectionHeader onReset={() => handleSectionReset('lighting')}>Lighting</SectionHeader>
+          <div className="space-y-4">
+            {/* Enable Lighting Toggle */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="lightingEnabled" className="text-sm flex items-center gap-2">
+                <Lightbulb className="w-4 h-4" />
+                Enable Lighting
+              </Label>
+              <Switch
+                id="lightingEnabled"
+                checked={settings.lighting.enabled}
+                onCheckedChange={(checked) =>
+                  onSettingsChange({
+                    lighting: { ...settings.lighting, enabled: checked },
+                    activePreset: 'custom',
+                  })
+                }
+                disabled={disabled}
+              />
+            </div>
+
+            {settings.lighting.enabled && (
+              <>
+                {/* Dark Mode Toggle */}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="lightingDarkMode" className="text-sm">
+                    Dark Background
+                  </Label>
+                  <Switch
+                    id="lightingDarkMode"
+                    checked={settings.lighting.darkMode}
+                    onCheckedChange={(checked) =>
+                      onSettingsChange({
+                        lighting: { ...settings.lighting, darkMode: checked },
+                        activePreset: 'custom',
+                      })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                {/* Light Preset */}
+                <div className="space-y-2">
+                  <Label htmlFor="lightPreset" className="text-sm">
+                    Light Direction
+                  </Label>
+                  <Select
+                    value={settings.lighting.preset}
+                    onValueChange={(value: LightPreset) =>
+                      onSettingsChange({
+                        lighting: { ...settings.lighting, preset: value },
+                        activePreset: 'custom',
+                      })
+                    }
+                    disabled={disabled}
+                  >
+                    <SelectTrigger id="lightPreset">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="top-left">Top Left</SelectItem>
+                      <SelectItem value="top">Top</SelectItem>
+                      <SelectItem value="top-right">Top Right</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                      <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                      <SelectItem value="bottom">Bottom</SelectItem>
+                      <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="custom">Custom Angle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Custom Angle (only when preset is 'custom') */}
+                {settings.lighting.preset === 'custom' && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-baseline">
+                      <Label htmlFor="lightAngle" className="text-sm">
+                        Light Angle
+                      </Label>
+                      <span className="text-sm text-muted-foreground">
+                        {settings.lighting.angle}°
+                      </span>
+                    </div>
+                    <Slider
+                      id="lightAngle"
+                      min={0}
+                      max={360}
+                      step={5}
+                      value={[settings.lighting.angle]}
+                      onValueChange={([value]) =>
+                        onSettingsChange({
+                          lighting: { ...settings.lighting, angle: value },
+                          activePreset: 'custom',
+                        })
+                      }
+                      disabled={disabled}
+                    />
+                  </div>
+                )}
+
+                {/* Light Elevation */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="lightElevation" className="text-sm">
+                      Light Elevation
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {settings.lighting.elevation}°
+                    </span>
+                  </div>
+                  <Slider
+                    id="lightElevation"
+                    min={0}
+                    max={90}
+                    step={5}
+                    value={[settings.lighting.elevation]}
+                    onValueChange={([value]) =>
+                      onSettingsChange({
+                        lighting: { ...settings.lighting, elevation: value },
+                        activePreset: 'custom',
+                      })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                {/* Light Intensity */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="lightIntensity" className="text-sm">
+                      Light Intensity
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(settings.lighting.intensity * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="lightIntensity"
+                    min={0}
+                    max={200}
+                    step={5}
+                    value={[settings.lighting.intensity * 100]}
+                    onValueChange={([value]) =>
+                      onSettingsChange({
+                        lighting: { ...settings.lighting, intensity: value / 100 },
+                        activePreset: 'custom',
+                      })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                {/* Ambient Light */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="lightAmbient" className="text-sm">
+                      Ambient Light
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(settings.lighting.ambient * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="lightAmbient"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={[settings.lighting.ambient * 100]}
+                    onValueChange={([value]) =>
+                      onSettingsChange({
+                        lighting: { ...settings.lighting, ambient: value / 100 },
+                        activePreset: 'custom',
+                      })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                {/* God Rays Subsection */}
+                <div className="pt-2 border-t border-border/50 mt-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                      God Rays
+                    </Label>
+                    <Switch
+                      checked={settings.lighting.rays.enabled}
+                      onCheckedChange={(checked) =>
+                        onSettingsChange({
+                          lighting: {
+                            ...settings.lighting,
+                            rays: { ...settings.lighting.rays, enabled: checked },
+                          },
+                          activePreset: 'custom',
+                        })
+                      }
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+
+                {settings.lighting.rays.enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <Label htmlFor="rayCount" className="text-sm">
+                          Ray Count
+                        </Label>
+                        <span className="text-sm text-muted-foreground">
+                          {settings.lighting.rays.count}
+                        </span>
+                      </div>
+                      <Slider
+                        id="rayCount"
+                        min={3}
+                        max={12}
+                        step={1}
+                        value={[settings.lighting.rays.count]}
+                        onValueChange={([value]) =>
+                          onSettingsChange({
+                            lighting: {
+                              ...settings.lighting,
+                              rays: { ...settings.lighting.rays, count: value },
+                            },
+                            activePreset: 'custom',
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <Label htmlFor="rayIntensity" className="text-sm">
+                          Ray Intensity
+                        </Label>
+                        <span className="text-sm text-muted-foreground">
+                          {Math.round(settings.lighting.rays.intensity * 100)}%
+                        </span>
+                      </div>
+                      <Slider
+                        id="rayIntensity"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[settings.lighting.rays.intensity * 100]}
+                        onValueChange={([value]) =>
+                          onSettingsChange({
+                            lighting: {
+                              ...settings.lighting,
+                              rays: { ...settings.lighting.rays, intensity: value / 100 },
+                            },
+                            activePreset: 'custom',
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <Label htmlFor="raySpread" className="text-sm">
+                          Ray Spread
+                        </Label>
+                        <span className="text-sm text-muted-foreground">
+                          {settings.lighting.rays.spread}°
+                        </span>
+                      </div>
+                      <Slider
+                        id="raySpread"
+                        min={0}
+                        max={90}
+                        step={5}
+                        value={[settings.lighting.rays.spread]}
+                        onValueChange={([value]) =>
+                          onSettingsChange({
+                            lighting: {
+                              ...settings.lighting,
+                              rays: { ...settings.lighting.rays, spread: value },
+                            },
+                            activePreset: 'custom',
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <Label htmlFor="rayLength" className="text-sm">
+                          Ray Length
+                        </Label>
+                        <span className="text-sm text-muted-foreground">
+                          {Math.round(settings.lighting.rays.length * 100)}%
+                        </span>
+                      </div>
+                      <Slider
+                        id="rayLength"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[settings.lighting.rays.length * 100]}
+                        onValueChange={([value]) =>
+                          onSettingsChange({
+                            lighting: {
+                              ...settings.lighting,
+                              rays: { ...settings.lighting.rays, length: value / 100 },
+                            },
+                            activePreset: 'custom',
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Glow Subsection */}
+                <div className="pt-2 border-t border-border/50 mt-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                      Color Glow
+                    </Label>
+                    <Switch
+                      checked={settings.lighting.glow.enabled}
+                      onCheckedChange={(checked) =>
+                        onSettingsChange({
+                          lighting: {
+                            ...settings.lighting,
+                            glow: { ...settings.lighting.glow, enabled: checked },
+                          },
+                          activePreset: 'custom',
+                        })
+                      }
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+
+                {settings.lighting.glow.enabled && (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <Label htmlFor="glowIntensity" className="text-sm">
+                          Glow Intensity
+                        </Label>
+                        <span className="text-sm text-muted-foreground">
+                          {Math.round(settings.lighting.glow.intensity * 100)}%
+                        </span>
+                      </div>
+                      <Slider
+                        id="glowIntensity"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[settings.lighting.glow.intensity * 100]}
+                        onValueChange={([value]) =>
+                          onSettingsChange({
+                            lighting: {
+                              ...settings.lighting,
+                              glow: { ...settings.lighting.glow, intensity: value / 100 },
+                            },
+                            activePreset: 'custom',
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <Label htmlFor="glowRadius" className="text-sm">
+                          Glow Radius
+                        </Label>
+                        <span className="text-sm text-muted-foreground">
+                          {settings.lighting.glow.radius}px
+                        </span>
+                      </div>
+                      <Slider
+                        id="glowRadius"
+                        min={0}
+                        max={50}
+                        step={1}
+                        value={[settings.lighting.glow.radius]}
+                        onValueChange={([value]) =>
+                          onSettingsChange({
+                            lighting: {
+                              ...settings.lighting,
+                              glow: { ...settings.lighting.glow, radius: value },
+                            },
+                            activePreset: 'custom',
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </section>
 

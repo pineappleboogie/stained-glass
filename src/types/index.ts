@@ -58,6 +58,77 @@ export type EdgeMethod = 'sobel' | 'canny';
 // Preset template names
 export type PresetName = 'fine-detail' | 'bold-shapes' | 'classic' | 'artistic' | 'custom';
 
+// Light direction presets
+export type LightPreset =
+  | 'top-left'
+  | 'top'
+  | 'top-right'
+  | 'right'
+  | 'bottom-right'
+  | 'bottom'
+  | 'bottom-left'
+  | 'left'
+  | 'center'
+  | 'custom';
+
+// Lighting settings for stained glass effects
+export interface LightSettings {
+  enabled: boolean;
+  preset: LightPreset;
+  angle: number; // 0-360° (visible when preset = 'custom')
+  elevation: number; // 0-90° (grazing to perpendicular)
+  intensity: number; // 0-2 (0-200%)
+  ambient: number; // 0-1 (0-100%)
+  darkMode: boolean; // Dark background with enhanced glow
+  rays: {
+    enabled: boolean;
+    count: number; // 3-12
+    intensity: number; // 0-1
+    spread: number; // 0-90°
+    length: number; // 0-1 (relative to height)
+  };
+  glow: {
+    enabled: boolean;
+    intensity: number; // 0-1
+    radius: number; // 0-50px
+  };
+}
+
+// Default lighting settings (disabled by default)
+export const DEFAULT_LIGHT_SETTINGS: LightSettings = {
+  enabled: false,
+  preset: 'top-left',
+  angle: 315, // corresponds to top-left
+  elevation: 45,
+  intensity: 1,
+  ambient: 0.3,
+  darkMode: false,
+  rays: {
+    enabled: false,
+    count: 5,
+    intensity: 0.5,
+    spread: 30,
+    length: 0.7,
+  },
+  glow: {
+    enabled: false,
+    intensity: 0.5,
+    radius: 15,
+  },
+};
+
+// Map light presets to angles
+export const LIGHT_PRESET_ANGLES: Record<Exclude<LightPreset, 'custom' | 'center'>, number> = {
+  'top-left': 315,
+  'top': 270,
+  'top-right': 225,
+  'right': 180,
+  'bottom-right': 135,
+  'bottom': 90,
+  'bottom-left': 45,
+  'left': 0,
+};
+
 // Settings for the stained glass generator
 export interface StainedGlassSettings {
   // Cell generation
@@ -101,6 +172,9 @@ export interface StainedGlassSettings {
 
   // Presets
   activePreset: PresetName;
+
+  // Lighting
+  lighting: LightSettings;
 }
 
 // Default settings
@@ -129,6 +203,7 @@ export const DEFAULT_SETTINGS: StainedGlassSettings = {
   frameSaturation: 1,
   frameBrightness: 1,
   activePreset: 'custom',
+  lighting: DEFAULT_LIGHT_SETTINGS,
 };
 
 // Export format
@@ -162,6 +237,7 @@ export const SECTION_SETTINGS = {
   leadLines: ['lineWidth', 'lineColor'] as const,
   frame: ['frameStyle', 'frameWidth', 'frameCellSize', 'frameColorPalette', 'frameHueShift', 'frameSaturation', 'frameBrightness'] as const,
   color: ['colorMode', 'paletteSize', 'saturation', 'brightness', 'colorPalette'] as const,
+  lighting: ['lighting'] as const,
 } as const;
 
 export type SettingsSection = keyof typeof SECTION_SETTINGS;

@@ -1,5 +1,13 @@
-import type { Point, RGB, ColoredCell } from '@/types';
+import type { Point, RGB, ColoredCell, LightSettings } from '@/types';
 import { rgbToHex as frameRgbToHex, type FrameElement } from './frames';
+import {
+  generateLightingDefs,
+  applyLightTransmission,
+  clusterCells,
+  generateGodRays,
+  renderGodRaysToSVG,
+  renderGlowLayer,
+} from '@/lib/lighting';
 
 /**
  * Convert RGB to hex color string
@@ -33,20 +41,43 @@ export interface SVGOptions {
   width: number;
   height: number;
   frameElements?: FrameElement[];
+  lighting?: LightSettings;
 }
 
 /**
- * Generate SVG string from colored cells with optional frame
+ * Generate SVG string from colored cells with optional frame and lighting
  */
 export function generateSVG(cells: ColoredCell[], options: SVGOptions): string {
-  const { lineWidth, lineColor, width, height, frameElements = [] } = options;
+  const { lineWidth, lineColor, width, height, frameElements = [], lighting } = options;
 
   const svgParts: string[] = [];
 
-  // Add white background for transparent images
-  svgParts.push(`  <rect width="${width}" height="${height}" fill="#ffffff"/>`);
+  // Apply lighting transmission to cells if enabled
+  const litCells = lighting?.enabled
+    ? applyLightTransmission(cells, lighting, width, height)
+    : cells;
 
-  // Add frame elements first (background layer)
+  // Generate lighting filter definitions
+  if (lighting?.enabled) {
+    const defs = generateLightingDefs(lighting);
+    if (defs) {
+      svgParts.push(defs);
+    }
+  }
+
+  // Background color (dark in dark mode)
+  const bgColor = lighting?.enabled && lighting.darkMode ? '#1a1a1a' : '#ffffff';
+  svgParts.push(`  <rect width="${width}" height="${height}" fill="${bgColor}"/>`);
+
+  // Glow layer (rendered before cells for proper blend mode)
+  if (lighting?.enabled && lighting.glow.enabled) {
+    const glowLayer = renderGlowLayer(litCells, lighting, width, height);
+    if (glowLayer) {
+      svgParts.push(glowLayer);
+    }
+  }
+
+  // Add frame elements (background layer)
   if (frameElements.length > 0) {
     svgParts.push('  <g class="frame">');
     for (const element of frameElements) {
@@ -59,12 +90,22 @@ export function generateSVG(cells: ColoredCell[], options: SVGOptions): string {
 
   // Add artwork cells
   svgParts.push('  <g class="artwork">');
-  for (const cell of cells) {
+  for (const cell of litCells) {
     const d = polygonToPath(cell.polygon);
     const fill = rgbToHex(cell.color);
     svgParts.push(`    <path d="${d}" fill="${fill}" stroke="${lineColor}" stroke-width="${lineWidth}" stroke-linejoin="round"/>`);
   }
   svgParts.push('  </g>');
+
+  // Light rays layer (rendered on top of cells but under lead lines conceptually)
+  if (lighting?.enabled && lighting.rays.enabled) {
+    const clusters = clusterCells(litCells, Math.ceil(Math.sqrt(lighting.rays.count * 2)), width, height);
+    const rays = generateGodRays(clusters, lighting, width, height);
+    const raysLayer = renderGodRaysToSVG(rays, width, height, lighting.darkMode);
+    if (raysLayer) {
+      svgParts.push(raysLayer);
+    }
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet">
 ${svgParts.join('\n')}
