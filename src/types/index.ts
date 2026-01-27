@@ -30,6 +30,22 @@ export interface VoronoiResult {
 // Color modes for sampling
 export type ColorMode = 'exact' | 'average' | 'palette';
 
+// Color palette preset IDs
+export type ColorPaletteId =
+  | 'original'
+  | 'tiffany-classic'
+  | 'gothic-cathedral'
+  | 'art-nouveau'
+  | 'sunset-warm'
+  | 'ocean-cool'
+  | 'forest'
+  | 'modern-minimal'
+  | 'monochrome-blue'
+  | 'sepia-vintage'
+  | 'jewel-tones'
+  | 'earth-tones'
+  | 'pastel-dream';
+
 // Point distribution strategies
 export type PointDistribution = 'uniform' | 'poisson' | 'edge-weighted';
 
@@ -67,6 +83,7 @@ export interface StainedGlassSettings {
   paletteSize: number;
   saturation: number; // 0-2 (1 = 100%)
   brightness: number; // 0-2 (1 = 100%)
+  colorPalette: ColorPaletteId;
 
   // View
   compareMode: boolean;
@@ -75,6 +92,12 @@ export interface StainedGlassSettings {
   frameStyle: FrameStyle;
   frameWidth: number; // 2-15% of min(width, height)
   frameCellSize: number; // Size of geometric cells (10-50px)
+
+  // Frame color settings
+  frameColorPalette: ColorPaletteId; // 'original' or preset name
+  frameHueShift: number; // 0-360 degrees
+  frameSaturation: number; // 0-2 (1 = 100%)
+  frameBrightness: number; // 0-2 (1 = 100%)
 
   // Presets
   activePreset: PresetName;
@@ -96,10 +119,15 @@ export const DEFAULT_SETTINGS: StainedGlassSettings = {
   paletteSize: 16,
   saturation: 1,
   brightness: 1,
+  colorPalette: 'original',
   compareMode: false,
   frameStyle: 'none',
   frameWidth: 5,
   frameCellSize: 30,
+  frameColorPalette: 'original',
+  frameHueShift: 0,
+  frameSaturation: 1,
+  frameBrightness: 1,
   activePreset: 'custom',
 };
 

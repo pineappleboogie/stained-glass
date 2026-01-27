@@ -1,5 +1,6 @@
-import type { Point, RGB, VoronoiCell, ColorMode } from '@/types';
+import type { Point, RGB, VoronoiCell, ColorMode, ColorPaletteId } from '@/types';
 import { getPixel } from './loader';
+import { applyPalette } from '@/lib/color-palettes';
 
 /**
  * Check if a point is inside a polygon using ray casting
@@ -252,7 +253,8 @@ export function sampleColors(
   mode: ColorMode,
   paletteSize: number,
   saturation: number,
-  brightness: number
+  brightness: number,
+  colorPalette: ColorPaletteId = 'original'
 ): RGB[] {
   // Sample raw colors
   const rawColors = cells.map((cell) =>
@@ -261,8 +263,11 @@ export function sampleColors(
       : sampleCenterColor(imageData, cell)
   );
 
-  // Apply palette quantization if needed
+  // Apply palette quantization if needed (auto-generates palette from image)
   let colors = mode === 'palette' ? quantizeColors(rawColors, paletteSize) : rawColors;
+
+  // Apply preset color palette mapping if not 'original'
+  colors = applyPalette(colors, colorPalette);
 
   // Apply saturation and brightness adjustments
   colors = colors.map((c) => adjustColor(c, saturation, brightness));

@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -20,6 +22,7 @@ import type {
   StainedGlassSettings,
   PointDistribution,
   ColorMode,
+  ColorPaletteId,
   ExportFormat,
   PresetName,
   EdgeMethod,
@@ -27,6 +30,7 @@ import type {
 } from '@/types';
 import { useRef } from 'react';
 import { PRESETS, applyPreset } from '@/lib/presets';
+import { getPalettesByCategory } from '@/lib/color-palettes';
 import { ImagePlus, SplitSquareHorizontal } from 'lucide-react';
 
 interface ControlPanelProps {
@@ -435,6 +439,123 @@ export function ControlPanel({
                     />
                   </div>
                 )}
+
+                {/* Frame Color Subsection */}
+                <div className="pt-2 border-t border-border/50 mt-3">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Frame Color
+                  </Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="frameColorPalette" className="text-sm">
+                    Frame Palette
+                  </Label>
+                  <Select
+                    value={settings.frameColorPalette}
+                    onValueChange={(value: ColorPaletteId) =>
+                      onSettingsChange({ frameColorPalette: value, activePreset: 'custom' })
+                    }
+                    disabled={disabled}
+                  >
+                    <SelectTrigger id="frameColorPalette">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="original">Original Colors</SelectItem>
+                      <SelectGroup>
+                        <SelectLabel>Traditional Glass</SelectLabel>
+                        {getPalettesByCategory().traditional.map((palette) => (
+                          <SelectItem key={palette.id} value={palette.id}>
+                            {palette.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>Color Moods</SelectLabel>
+                        {getPalettesByCategory().moods.map((palette) => (
+                          <SelectItem key={palette.id} value={palette.id}>
+                            {palette.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>Artistic Styles</SelectLabel>
+                        {getPalettesByCategory().artistic.map((palette) => (
+                          <SelectItem key={palette.id} value={palette.id}>
+                            {palette.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="frameHueShift" className="text-sm">
+                      Hue Shift
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {settings.frameHueShift}°
+                    </span>
+                  </div>
+                  <Slider
+                    id="frameHueShift"
+                    min={0}
+                    max={360}
+                    step={5}
+                    value={[settings.frameHueShift]}
+                    onValueChange={([value]) =>
+                      onSettingsChange({ frameHueShift: value, activePreset: 'custom' })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="frameSaturation" className="text-sm">
+                      Frame Saturation
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(settings.frameSaturation * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="frameSaturation"
+                    min={0}
+                    max={200}
+                    step={5}
+                    value={[settings.frameSaturation * 100]}
+                    onValueChange={([value]) =>
+                      onSettingsChange({ frameSaturation: value / 100, activePreset: 'custom' })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="frameBrightness" className="text-sm">
+                      Frame Brightness
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(settings.frameBrightness * 100)}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="frameBrightness"
+                    min={0}
+                    max={200}
+                    step={5}
+                    value={[settings.frameBrightness * 100]}
+                    onValueChange={([value]) =>
+                      onSettingsChange({ frameBrightness: value / 100, activePreset: 'custom' })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
               </>
             )}
           </div>
@@ -446,6 +567,50 @@ export function ControlPanel({
         <section className="py-4">
           <SectionHeader>Color</SectionHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="colorPalette" className="text-sm">
+                Color Palette
+              </Label>
+              <Select
+                value={settings.colorPalette}
+                onValueChange={(value: ColorPaletteId) =>
+                  onSettingsChange({ colorPalette: value, activePreset: 'custom' })
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger id="colorPalette">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="original">Original Colors</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel>Traditional Glass</SelectLabel>
+                    {getPalettesByCategory().traditional.map((palette) => (
+                      <SelectItem key={palette.id} value={palette.id}>
+                        {palette.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Color Moods</SelectLabel>
+                    {getPalettesByCategory().moods.map((palette) => (
+                      <SelectItem key={palette.id} value={palette.id}>
+                        {palette.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Artistic Styles</SelectLabel>
+                    {getPalettesByCategory().artistic.map((palette) => (
+                      <SelectItem key={palette.id} value={palette.id}>
+                        {palette.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="colorMode" className="text-sm">
                 Color Mode

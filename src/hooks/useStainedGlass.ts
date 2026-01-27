@@ -20,7 +20,7 @@ import {
 import { generateVoronoi, relaxPoints } from '@/lib/voronoi/generator';
 import { generateSVG } from '@/lib/svg/generator';
 import { downloadSVG, downloadPNG } from '@/lib/svg/exporter';
-import { generateFrame, type FrameElement } from '@/lib/svg/frames';
+import { generateFrame, type FrameElement, type FrameColorOptions } from '@/lib/svg/frames';
 import { useImageWorker } from './useWorker';
 
 interface UseStainedGlassReturn {
@@ -80,15 +80,27 @@ export function useStainedGlass(): UseStainedGlassReturn {
     paletteSize,
     saturation,
     brightness,
+    colorPalette,
     frameStyle,
     frameWidth,
     frameCellSize,
+    frameColorPalette,
+    frameHueShift,
+    frameSaturation,
+    frameBrightness,
   } = settings;
 
   // Ref for color settings to handle color-only updates separately
-  const colorSettingsRef = useRef({ colorMode, paletteSize, saturation, brightness });
+  const colorSettingsRef = useRef({ colorMode, paletteSize, saturation, brightness, colorPalette });
   // Ref for frame cell size to handle frame-only updates separately
   const frameCellSizeRef = useRef(frameCellSize);
+  // Ref for frame color settings to handle frame color-only updates separately
+  const frameColorSettingsRef = useRef<FrameColorOptions>({
+    palette: frameColorPalette,
+    hueShift: frameHueShift,
+    saturation: frameSaturation,
+    brightness: frameBrightness,
+  });
 
   // Process the current image with current settings
   const processImage = useCallback(async () => {
@@ -136,7 +148,8 @@ export function useStainedGlass(): UseStainedGlassReturn {
           lineWidth: lineSettingsRef.current.lineWidth,
           lineColor: lineSettingsRef.current.lineColor,
         },
-        imageData
+        imageData,
+        frameColorSettingsRef.current
       );
 
       // Cache frame elements for SVG regeneration
@@ -205,14 +218,15 @@ export function useStainedGlass(): UseStainedGlassReturn {
       voronoiCellsRef.current = voronoiResult.cells;
 
       // Sample colors for each cell (use ref for color settings to avoid dependency)
-      const { colorMode: cm, paletteSize: ps, saturation: sat, brightness: br } = colorSettingsRef.current;
+      const { colorMode: cm, paletteSize: ps, saturation: sat, brightness: br, colorPalette: cp } = colorSettingsRef.current;
       const colors = sampleColors(
         imageData,
         voronoiResult.cells,
         cm,
         ps,
         sat,
-        br
+        br,
+        cp
       );
 
       // Create colored cells
@@ -265,15 +279,25 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
   // Keep color settings ref in sync
   useEffect(() => {
-    colorSettingsRef.current = { colorMode, paletteSize, saturation, brightness };
-  }, [colorMode, paletteSize, saturation, brightness]);
+    colorSettingsRef.current = { colorMode, paletteSize, saturation, brightness, colorPalette };
+  }, [colorMode, paletteSize, saturation, brightness, colorPalette]);
 
   // Keep frame cell size ref in sync
   useEffect(() => {
     frameCellSizeRef.current = frameCellSize;
   }, [frameCellSize]);
 
-  // Regenerate frame only when frameCellSize changes (no cell regeneration needed)
+  // Keep frame color settings ref in sync
+  useEffect(() => {
+    frameColorSettingsRef.current = {
+      palette: frameColorPalette,
+      hueShift: frameHueShift,
+      saturation: frameSaturation,
+      brightness: frameBrightness,
+    };
+  }, [frameColorPalette, frameHueShift, frameSaturation, frameBrightness]);
+
+  // Regenerate frame only when frameCellSize or frame color settings change (no cell regeneration needed)
   const regenerateFrame = useCallback(() => {
     const loadedImage = loadedImageRef.current;
     const coloredCells = coloredCellsRef.current;
@@ -282,7 +306,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
     const { imageData, width, height } = loadedImage;
 
-    // Regenerate frame elements with new cell size
+    // Regenerate frame elements with new settings
     const frameResult = generateFrame(
       {
         style: frameStyle,
@@ -293,7 +317,13 @@ export function useStainedGlass(): UseStainedGlassReturn {
         lineWidth: lineSettingsRef.current.lineWidth,
         lineColor: lineSettingsRef.current.lineColor,
       },
-      imageData
+      imageData,
+      {
+        palette: frameColorPalette,
+        hueShift: frameHueShift,
+        saturation: frameSaturation,
+        brightness: frameBrightness,
+      }
     );
 
     // Update cached frame elements
@@ -309,11 +339,12 @@ export function useStainedGlass(): UseStainedGlassReturn {
     });
 
     setSvgString(svg);
-  }, [frameStyle, frameWidth, frameCellSize]);
+  }, [frameStyle, frameWidth, frameCellSize, frameColorPalette, frameHueShift, frameSaturation, frameBrightness]);
 
   // Handle frame-only updates (debounced)
   useEffect(() => {
-    if (coloredCellsRef.current && frameStyle === 'segmented') {
+    // Only regenerate frame if we have cells and frame is enabled
+    if (coloredCellsRef.current && frameStyle !== 'none') {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
@@ -326,7 +357,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [frameCellSize, regenerateFrame, frameStyle]);
+  }, [frameCellSize, frameColorPalette, frameHueShift, frameSaturation, frameBrightness, regenerateFrame, frameStyle]);
 
   // Re-sample colors only when color settings change (no cell regeneration needed)
   const resampleColors = useCallback(() => {
@@ -344,7 +375,8 @@ export function useStainedGlass(): UseStainedGlassReturn {
       colorMode,
       paletteSize,
       saturation,
-      brightness
+      brightness,
+      colorPalette
     );
 
     // Create colored cells
@@ -366,7 +398,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
     });
 
     setSvgString(svg);
-  }, [colorMode, paletteSize, saturation, brightness]);
+  }, [colorMode, paletteSize, saturation, brightness, colorPalette]);
 
   // Handle color-only updates (debounced)
   useEffect(() => {

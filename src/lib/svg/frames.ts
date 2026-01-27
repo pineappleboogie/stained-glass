@@ -1,6 +1,8 @@
-import type { Point, RGB, FrameStyle } from '@/types';
+import type { Point, RGB, FrameStyle, ColorPaletteId } from '@/types';
 import { type ClipRect } from './clip';
 import { sampleColorAtPoint, getEdgeAverageColor, type EdgePosition } from '../image/edge-sampler';
+import { applyPalette } from '@/lib/color-palettes';
+import { adjustColor } from '@/lib/image/sampler';
 
 export interface FrameElement {
   polygon: Point[];
@@ -15,6 +17,104 @@ export interface FrameOptions {
   cellSize: number; // For geometric frame
   lineWidth: number;
   lineColor: string;
+}
+
+export interface FrameColorOptions {
+  palette: ColorPaletteId;
+  hueShift: number; // 0-360 degrees
+  saturation: number; // 0-2 (1 = 100%)
+  brightness: number; // 0-2 (1 = 100%)
+}
+
+/**
+ * Shift the hue of an RGB color by a specified number of degrees
+ */
+export function shiftHue(color: RGB, degrees: number): RGB {
+  if (degrees === 0) return color;
+
+  // Convert RGB to HSL
+  const r = color.r / 255;
+  const g = color.g / 255;
+  const b = color.b / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+
+  let h = 0;
+  let s = 0;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+
+  // Shift hue (h is 0-1, degrees is 0-360)
+  h = (h + degrees / 360) % 1;
+  if (h < 0) h += 1;
+
+  // Convert back to RGB
+  if (s === 0) {
+    const v = Math.round(l * 255);
+    return { r: v, g: v, b: v };
+  }
+
+  const hue2rgb = (p: number, q: number, t: number): number => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+
+  return {
+    r: Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+    g: Math.round(hue2rgb(p, q, h) * 255),
+    b: Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+  };
+}
+
+/**
+ * Apply color transformations to frame colors
+ * Order: palette → hue shift → saturation/brightness
+ */
+function applyFrameColorTransforms(colors: RGB[], options?: FrameColorOptions): RGB[] {
+  if (!options) return colors;
+
+  let result = colors;
+
+  // Apply palette mapping if not 'original'
+  if (options.palette !== 'original') {
+    result = applyPalette(result, options.palette);
+  }
+
+  // Apply hue shift if non-zero
+  if (options.hueShift !== 0) {
+    result = result.map((c) => shiftHue(c, options.hueShift));
+  }
+
+  // Apply saturation and brightness adjustments
+  if (options.saturation !== 1 || options.brightness !== 1) {
+    result = result.map((c) => adjustColor(c, options.saturation, options.brightness));
+  }
+
+  return result;
 }
 
 export interface FrameResult {
@@ -39,7 +139,8 @@ export function calculateFrameDepth(
  */
 export function generateFrame(
   options: FrameOptions,
-  imageData: ImageData | null
+  imageData: ImageData | null,
+  colorOptions?: FrameColorOptions
 ): FrameResult {
   const { style, width, height, frameWidth } = options;
 
@@ -75,6 +176,16 @@ export function generateFrame(
       break;
     default:
       elements = [];
+  }
+
+  // Apply color transformations to frame elements
+  if (colorOptions && elements.length > 0) {
+    const colors = elements.map((e) => e.color);
+    const transformedColors = applyFrameColorTransforms(colors, colorOptions);
+    elements = elements.map((e, i) => ({
+      ...e,
+      color: transformedColors[i],
+    }));
   }
 
   return { elements, innerBounds };
