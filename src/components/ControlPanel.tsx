@@ -1,6 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -13,6 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Divider,
+  SectionHeader,
+  PanelHeader,
+} from '@/components/OrnamentalDivider';
 import type {
   StainedGlassSettings,
   PointDistribution,
@@ -50,10 +54,15 @@ export function ControlPanel({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Replace Image */}
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <PanelHeader title="VITRUM" subtitle="Stained Glass Studio" />
+
+      <Divider />
+
+      {/* Replace Image Button */}
       {onReplaceImage && (
-        <>
+        <div className="px-5 py-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -63,263 +72,275 @@ export function ControlPanel({
           />
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full text-sm"
             onClick={() => fileInputRef.current?.click()}
           >
-            <svg
-              className="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
             Replace Image
           </Button>
-        </>
+        </div>
       )}
 
-      {/* Cell Generation */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Cell Generation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor="cellCount">Cell Count</Label>
-              <span className="text-sm text-neutral-500">{settings.cellCount}</span>
-            </div>
-            <Slider
-              id="cellCount"
-              min={50}
-              max={2000}
-              step={10}
-              value={[settings.cellCount]}
-              onValueChange={([value]) => onSettingsChange({ cellCount: value })}
-              disabled={disabled}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="distribution">Point Distribution</Label>
-            <Select
-              value={settings.pointDistribution}
-              onValueChange={(value: PointDistribution) =>
-                onSettingsChange({ pointDistribution: value })
-              }
-              disabled={disabled}
-            >
-              <SelectTrigger id="distribution">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="uniform">Uniform</SelectItem>
-                <SelectItem value="poisson">Poisson Disk</SelectItem>
-                <SelectItem value="edge-weighted">Edge-weighted</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {settings.pointDistribution === 'edge-weighted' && (
+      {/* Main Controls */}
+      <div className="flex-1 overflow-y-auto px-5 pb-6">
+        {/* Cell Generation Section */}
+        <section className="py-4">
+          <SectionHeader>Cell Generation</SectionHeader>
+          <div className="space-y-4">
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label htmlFor="edgeInfluence">Edge Influence</Label>
-                <span className="text-sm text-neutral-500">
-                  {Math.round(settings.edgeInfluence * 100)}%
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="cellCount" className="text-sm">
+                  Cell Count
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {settings.cellCount}
                 </span>
               </div>
               <Slider
-                id="edgeInfluence"
+                id="cellCount"
+                min={50}
+                max={2000}
+                step={10}
+                value={[settings.cellCount]}
+                onValueChange={([value]) => onSettingsChange({ cellCount: value })}
+                disabled={disabled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="distribution" className="text-sm">
+                Point Distribution
+              </Label>
+              <Select
+                value={settings.pointDistribution}
+                onValueChange={(value: PointDistribution) =>
+                  onSettingsChange({ pointDistribution: value })
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger id="distribution">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="uniform">Uniform</SelectItem>
+                  <SelectItem value="poisson">Poisson Disk</SelectItem>
+                  <SelectItem value="edge-weighted">Edge-weighted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {settings.pointDistribution === 'edge-weighted' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-baseline">
+                  <Label htmlFor="edgeInfluence" className="text-sm">
+                    Edge Influence
+                  </Label>
+                  <span className="text-sm text-muted-foreground">
+                    {Math.round(settings.edgeInfluence * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  id="edgeInfluence"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={[settings.edgeInfluence * 100]}
+                  onValueChange={([value]) =>
+                    onSettingsChange({ edgeInfluence: value / 100 })
+                  }
+                  disabled={disabled}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <Divider />
+
+        {/* Lead Lines Section */}
+        <section className="py-4">
+          <SectionHeader>Lead Lines</SectionHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="lineWidth" className="text-sm">
+                  Line Width
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {settings.lineWidth}px
+                </span>
+              </div>
+              <Slider
+                id="lineWidth"
+                min={0.5}
+                max={10}
+                step={0.5}
+                value={[settings.lineWidth]}
+                onValueChange={([value]) => onSettingsChange({ lineWidth: value })}
+                disabled={disabled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lineColor" className="text-sm">
+                Line Color
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="lineColor"
+                  type="color"
+                  value={settings.lineColor}
+                  onChange={(e) => onSettingsChange({ lineColor: e.target.value })}
+                  className="w-12 h-9 p-1 cursor-pointer"
+                  disabled={disabled}
+                />
+                <Input
+                  type="text"
+                  value={settings.lineColor}
+                  onChange={(e) => onSettingsChange({ lineColor: e.target.value })}
+                  className="flex-1 font-mono text-sm"
+                  disabled={disabled}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Divider />
+
+        {/* Color Section */}
+        <section className="py-4">
+          <SectionHeader>Color</SectionHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="colorMode" className="text-sm">
+                Color Mode
+              </Label>
+              <Select
+                value={settings.colorMode}
+                onValueChange={(value: ColorMode) =>
+                  onSettingsChange({ colorMode: value })
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger id="colorMode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="exact">Exact (Center)</SelectItem>
+                  <SelectItem value="average">Average</SelectItem>
+                  <SelectItem value="palette">Reduced Palette</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {settings.colorMode === 'palette' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-baseline">
+                  <Label htmlFor="paletteSize" className="text-sm">
+                    Palette Size
+                  </Label>
+                  <span className="text-sm text-muted-foreground">
+                    {settings.paletteSize} colors
+                  </span>
+                </div>
+                <Slider
+                  id="paletteSize"
+                  min={4}
+                  max={64}
+                  step={4}
+                  value={[settings.paletteSize]}
+                  onValueChange={([value]) => onSettingsChange({ paletteSize: value })}
+                  disabled={disabled}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="saturation" className="text-sm">
+                  Saturation
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {Math.round(settings.saturation * 100)}%
+                </span>
+              </div>
+              <Slider
+                id="saturation"
                 min={0}
-                max={100}
+                max={200}
                 step={5}
-                value={[settings.edgeInfluence * 100]}
+                value={[settings.saturation * 100]}
                 onValueChange={([value]) =>
-                  onSettingsChange({ edgeInfluence: value / 100 })
+                  onSettingsChange({ saturation: value / 100 })
                 }
                 disabled={disabled}
               />
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Lead Lines */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Lead Lines</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor="lineWidth">Line Width</Label>
-              <span className="text-sm text-neutral-500">{settings.lineWidth}px</span>
-            </div>
-            <Slider
-              id="lineWidth"
-              min={0.5}
-              max={10}
-              step={0.5}
-              value={[settings.lineWidth]}
-              onValueChange={([value]) => onSettingsChange({ lineWidth: value })}
-              disabled={disabled}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="lineColor">Line Color</Label>
-            <div className="flex gap-2">
-              <Input
-                id="lineColor"
-                type="color"
-                value={settings.lineColor}
-                onChange={(e) => onSettingsChange({ lineColor: e.target.value })}
-                className="w-12 h-9 p-1 cursor-pointer"
-                disabled={disabled}
-              />
-              <Input
-                type="text"
-                value={settings.lineColor}
-                onChange={(e) => onSettingsChange({ lineColor: e.target.value })}
-                className="flex-1 font-mono text-sm"
-                disabled={disabled}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Color */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Color</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="colorMode">Color Mode</Label>
-            <Select
-              value={settings.colorMode}
-              onValueChange={(value: ColorMode) =>
-                onSettingsChange({ colorMode: value })
-              }
-              disabled={disabled}
-            >
-              <SelectTrigger id="colorMode">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="exact">Exact (Center)</SelectItem>
-                <SelectItem value="average">Average</SelectItem>
-                <SelectItem value="palette">Reduced Palette</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {settings.colorMode === 'palette' && (
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label htmlFor="paletteSize">Palette Size</Label>
-                <span className="text-sm text-neutral-500">
-                  {settings.paletteSize} colors
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="brightness" className="text-sm">
+                  Brightness
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {Math.round(settings.brightness * 100)}%
                 </span>
               </div>
               <Slider
-                id="paletteSize"
-                min={4}
-                max={64}
-                step={4}
-                value={[settings.paletteSize]}
-                onValueChange={([value]) => onSettingsChange({ paletteSize: value })}
+                id="brightness"
+                min={0}
+                max={200}
+                step={5}
+                value={[settings.brightness * 100]}
+                onValueChange={([value]) =>
+                  onSettingsChange({ brightness: value / 100 })
+                }
                 disabled={disabled}
               />
             </div>
-          )}
+          </div>
+        </section>
 
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor="saturation">Saturation</Label>
-              <span className="text-sm text-neutral-500">
-                {Math.round(settings.saturation * 100)}%
-              </span>
+        <Divider />
+
+        {/* View & Export Section */}
+        <section className="py-4">
+          <SectionHeader>Export</SectionHeader>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="showOriginal" className="text-sm">
+                Show Original
+              </Label>
+              <Switch
+                id="showOriginal"
+                checked={settings.showOriginal}
+                onCheckedChange={(checked) =>
+                  onSettingsChange({ showOriginal: checked })
+                }
+                disabled={disabled}
+              />
             </div>
-            <Slider
-              id="saturation"
-              min={0}
-              max={200}
-              step={5}
-              value={[settings.saturation * 100]}
-              onValueChange={([value]) =>
-                onSettingsChange({ saturation: value / 100 })
-              }
-              disabled={disabled}
-            />
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor="brightness">Brightness</Label>
-              <span className="text-sm text-neutral-500">
-                {Math.round(settings.brightness * 100)}%
-              </span>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => onExport('svg')}
+                disabled={disabled}
+              >
+                Export SVG
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onExport('png')}
+                disabled={disabled}
+              >
+                Export PNG
+              </Button>
             </div>
-            <Slider
-              id="brightness"
-              min={0}
-              max={200}
-              step={5}
-              value={[settings.brightness * 100]}
-              onValueChange={([value]) =>
-                onSettingsChange({ brightness: value / 100 })
-              }
-              disabled={disabled}
-            />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* View & Export */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">View & Export</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="showOriginal">Show Original</Label>
-            <Switch
-              id="showOriginal"
-              checked={settings.showOriginal}
-              onCheckedChange={(checked) =>
-                onSettingsChange({ showOriginal: checked })
-              }
-              disabled={disabled}
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={() => onExport('svg')}
-              disabled={disabled}
-            >
-              Export SVG
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => onExport('png')}
-              disabled={disabled}
-            >
-              Export PNG
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </section>
+      </div>
     </div>
   );
 }

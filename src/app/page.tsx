@@ -23,7 +23,7 @@ export default function Home() {
     : undefined;
 
   return (
-    <div className="h-screen bg-neutral-50 dark:bg-neutral-950 flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {!hasImage ? (
         <div className="flex-1 flex items-center justify-center p-8">
           <DropZone
@@ -45,16 +45,16 @@ export default function Home() {
             />
 
             {processingState.error && (
-              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-red-600 dark:text-red-400 text-sm">
+              <div className="mt-4 p-4 bg-destructive/10 border border-destructive/30 rounded-md">
+                <p className="text-destructive text-sm">
                   {processingState.error}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Control panel - fixed width on the right */}
-          <aside className="w-80 shrink-0 border-l border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-y-auto p-4">
+          {/* Control panel */}
+          <aside className="w-80 shrink-0 panel overflow-hidden flex flex-col">
             <ControlPanel
               settings={settings}
               onSettingsChange={setSettings}
