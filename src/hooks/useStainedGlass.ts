@@ -16,9 +16,10 @@ import {
   generatePoissonPoints,
   generateEdgeWeightedPoints,
 } from '@/lib/voronoi/points';
-import { generateVoronoi } from '@/lib/voronoi/generator';
+import { generateVoronoi, relaxPoints } from '@/lib/voronoi/generator';
 import { generateSVG } from '@/lib/svg/generator';
 import { downloadSVG, downloadPNG } from '@/lib/svg/exporter';
+import { useImageWorker } from './useWorker';
 
 interface UseStainedGlassReturn {
   // State
@@ -45,17 +46,38 @@ export function useStainedGlass(): UseStainedGlassReturn {
   });
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
+  // Web worker for edge detection
+  const { detectEdges: detectEdgesWorker, isReady: isWorkerReady } = useImageWorker();
+
   // Store loaded image data for reprocessing
   const loadedImageRef = useRef<LoadedImage | null>(null);
   const edgesRef = useRef<Float32Array | null>(null);
+  const lastEdgeSettingsRef = useRef<string>('');
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Extract processing-relevant settings (exclude view-only settings like showOriginal)
+  const {
+    cellCount,
+    pointDistribution,
+    edgeInfluence,
+    relaxationIterations,
+    preBlur,
+    contrast,
+    edgeMethod,
+    edgeSensitivity,
+    lineWidth,
+    lineColor,
+    colorMode,
+    paletteSize,
+    saturation,
+    brightness,
+  } = settings;
 
   // Process the current image with current settings
   const processImage = useCallback(async () => {
     const loadedImage = loadedImageRef.current;
-    const edges = edgesRef.current;
 
-    if (!loadedImage || !edges) return;
+    if (!loadedImage) return;
 
     setProcessingState((prev) => ({ ...prev, isProcessing: true }));
 
@@ -65,24 +87,50 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
       const { imageData, width, height } = loadedImage;
 
+      // Check if we need to recompute edges (preprocessing settings changed)
+      const currentEdgeSettings = `${edgeMethod}-${edgeSensitivity}-${preBlur}-${contrast}`;
+      if (currentEdgeSettings !== lastEdgeSettingsRef.current || !edgesRef.current) {
+        const edgeOptions = {
+          method: edgeMethod,
+          sensitivity: edgeSensitivity,
+          preBlur,
+          contrast,
+        };
+
+        // Use worker if available, otherwise fallback to synchronous
+        if (isWorkerReady()) {
+          edgesRef.current = await detectEdgesWorker(imageData, edgeOptions);
+        } else {
+          edgesRef.current = detectEdges(imageData, edgeOptions);
+        }
+        lastEdgeSettingsRef.current = currentEdgeSettings;
+      }
+
+      const edges = edgesRef.current;
+
       // Generate points based on distribution strategy
       let points;
-      switch (settings.pointDistribution) {
+      switch (pointDistribution) {
         case 'uniform':
-          points = generateUniformPoints(width, height, settings.cellCount);
+          points = generateUniformPoints(width, height, cellCount);
           break;
         case 'poisson':
-          points = generatePoissonPoints(width, height, settings.cellCount);
+          points = generatePoissonPoints(width, height, cellCount);
           break;
         case 'edge-weighted':
           points = generateEdgeWeightedPoints(
             edges,
             width,
             height,
-            settings.cellCount,
-            settings.edgeInfluence
+            cellCount,
+            edgeInfluence
           );
           break;
+      }
+
+      // Apply Lloyd's relaxation if enabled (smooths cell shapes)
+      if (relaxationIterations > 0) {
+        points = relaxPoints(points, width, height, relaxationIterations);
       }
 
       // Generate Voronoi diagram
@@ -92,10 +140,10 @@ export function useStainedGlass(): UseStainedGlassReturn {
       const colors = sampleColors(
         imageData,
         voronoiResult.cells,
-        settings.colorMode,
-        settings.paletteSize,
-        settings.saturation,
-        settings.brightness
+        colorMode,
+        paletteSize,
+        saturation,
+        brightness
       );
 
       // Create colored cells
@@ -106,8 +154,8 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
       // Generate SVG
       const svg = generateSVG(coloredCells, {
-        lineWidth: settings.lineWidth,
-        lineColor: settings.lineColor,
+        lineWidth,
+        lineColor,
         width,
         height,
       });
@@ -122,7 +170,24 @@ export function useStainedGlass(): UseStainedGlassReturn {
     } finally {
       setProcessingState((prev) => ({ ...prev, isProcessing: false }));
     }
-  }, [settings]);
+  }, [
+    cellCount,
+    pointDistribution,
+    edgeInfluence,
+    relaxationIterations,
+    preBlur,
+    contrast,
+    edgeMethod,
+    edgeSensitivity,
+    lineWidth,
+    lineColor,
+    colorMode,
+    paletteSize,
+    saturation,
+    brightness,
+    detectEdgesWorker,
+    isWorkerReady,
+  ]);
 
   // Debounced processing
   const debouncedProcess = useCallback(() => {
@@ -134,7 +199,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
     }, 300);
   }, [processImage]);
 
-  // Reprocess when settings change
+  // Reprocess when processing-relevant settings change
   useEffect(() => {
     if (loadedImageRef.current) {
       debouncedProcess();
@@ -144,7 +209,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [settings, debouncedProcess]);
+  }, [debouncedProcess]);
 
   // Load a new image
   const loadImage = useCallback(
@@ -166,9 +231,20 @@ export function useStainedGlass(): UseStainedGlassReturn {
         setOriginalImageUrl(url);
         setImageDimensions({ width: loadedImage.width, height: loadedImage.height });
 
-        // Detect edges
-        const edges = detectEdges(loadedImage.imageData);
-        edgesRef.current = edges;
+        // Detect edges with current preprocessing settings (use worker if available)
+        const edgeOptions = {
+          method: edgeMethod,
+          sensitivity: edgeSensitivity,
+          preBlur,
+          contrast,
+        };
+
+        if (isWorkerReady()) {
+          edgesRef.current = await detectEdgesWorker(loadedImage.imageData, edgeOptions);
+        } else {
+          edgesRef.current = detectEdges(loadedImage.imageData, edgeOptions);
+        }
+        lastEdgeSettingsRef.current = `${edgeMethod}-${edgeSensitivity}-${preBlur}-${contrast}`;
 
         setProcessingState({ isLoading: false, isProcessing: true, error: null });
 
@@ -183,7 +259,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
         });
       }
     },
-    [originalImageUrl, processImage]
+    [originalImageUrl, processImage, edgeMethod, edgeSensitivity, preBlur, contrast, detectEdgesWorker, isWorkerReady]
   );
 
   // Update settings

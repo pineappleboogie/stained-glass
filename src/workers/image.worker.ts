@@ -1,40 +1,25 @@
 /**
- * Edge detection with preprocessing support
- * Supports Sobel and Canny algorithms with blur and contrast preprocessing
+ * Web Worker for heavy image processing operations
+ * Handles edge detection and color sampling off the main thread
  */
 
 import type { EdgeMethod } from '@/types';
 
-// Sobel kernels
+// Re-implement edge detection functions for the worker context
+// (Workers don't have access to the main bundle imports)
+
 const SOBEL_X = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
 const SOBEL_Y = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
 
-export interface EdgeDetectionOptions {
-  method?: EdgeMethod;
-  sensitivity?: number; // 0-100
-  preBlur?: number; // 0-10
-  contrast?: number; // 0.5-2.0
-}
-
-/**
- * Convert ImageData to grayscale values
- */
-function toGrayscale(imageData: ImageData): Float32Array {
-  const { data, width, height } = imageData;
+function toGrayscale(data: Uint8ClampedArray, width: number, height: number): Float32Array {
   const gray = new Float32Array(width * height);
-
   for (let i = 0; i < gray.length; i++) {
     const idx = i * 4;
-    // Luminance formula
     gray[i] = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
   }
-
   return gray;
 }
 
-/**
- * Apply 3x3 convolution kernel at a position
- */
 function convolve(
   gray: Float32Array,
   width: number,
@@ -56,9 +41,6 @@ function convolve(
   return sum;
 }
 
-/**
- * Generate 1D Gaussian kernel
- */
 function generateGaussianKernel(radius: number): number[] {
   const sigma = radius / 2;
   const size = Math.ceil(radius) * 2 + 1;
@@ -72,7 +54,6 @@ function generateGaussianKernel(radius: number): number[] {
     sum += value;
   }
 
-  // Normalize
   for (let i = 0; i < kernel.length; i++) {
     kernel[i] /= sum;
   }
@@ -80,9 +61,6 @@ function generateGaussianKernel(radius: number): number[] {
   return kernel;
 }
 
-/**
- * Apply 1D horizontal convolution
- */
 function convolve1DHorizontal(
   data: Float32Array,
   width: number,
@@ -106,9 +84,6 @@ function convolve1DHorizontal(
   return result;
 }
 
-/**
- * Apply 1D vertical convolution
- */
 function convolve1DVertical(
   data: Float32Array,
   width: number,
@@ -132,9 +107,6 @@ function convolve1DVertical(
   return result;
 }
 
-/**
- * Apply Gaussian blur to grayscale image using separable 1D convolutions
- */
 function applyGaussianBlur(
   gray: Float32Array,
   width: number,
@@ -150,17 +122,12 @@ function applyGaussianBlur(
   return result;
 }
 
-/**
- * Apply contrast adjustment to grayscale image
- * contrast: 0.5-2.0 (1.0 = no change)
- */
 function applyContrast(gray: Float32Array, contrast: number): Float32Array {
   if (contrast === 1.0) return gray;
 
   const result = new Float32Array(gray.length);
 
   for (let i = 0; i < gray.length; i++) {
-    // Center around 128, apply contrast, clamp
     const value = (gray[i] - 128) * contrast + 128;
     result[i] = Math.max(0, Math.min(255, value));
   }
@@ -168,9 +135,6 @@ function applyContrast(gray: Float32Array, contrast: number): Float32Array {
   return result;
 }
 
-/**
- * Compute gradient magnitude and direction using Sobel
- */
 function computeGradients(
   gray: Float32Array,
   width: number,
@@ -193,10 +157,6 @@ function computeGradients(
   return { magnitude, direction };
 }
 
-/**
- * Non-maximum suppression for Canny edge detection
- * Thins edges to single pixel width
- */
 function nonMaxSuppression(
   magnitude: Float32Array,
   direction: Float32Array,
@@ -211,32 +171,24 @@ function nonMaxSuppression(
       const mag = magnitude[idx];
       const angle = direction[idx];
 
-      // Quantize angle to 4 directions (0, 45, 90, 135 degrees)
       let neighbor1 = 0,
         neighbor2 = 0;
-
-      // Convert angle to positive range and determine neighbors
       const normalizedAngle = ((angle * 180) / Math.PI + 180) % 180;
 
       if (normalizedAngle < 22.5 || normalizedAngle >= 157.5) {
-        // Horizontal edge (check left/right)
         neighbor1 = magnitude[idx - 1];
         neighbor2 = magnitude[idx + 1];
       } else if (normalizedAngle < 67.5) {
-        // Diagonal (check top-right/bottom-left)
         neighbor1 = magnitude[(y - 1) * width + x + 1];
         neighbor2 = magnitude[(y + 1) * width + x - 1];
       } else if (normalizedAngle < 112.5) {
-        // Vertical edge (check top/bottom)
         neighbor1 = magnitude[(y - 1) * width + x];
         neighbor2 = magnitude[(y + 1) * width + x];
       } else {
-        // Diagonal (check top-left/bottom-right)
         neighbor1 = magnitude[(y - 1) * width + x - 1];
         neighbor2 = magnitude[(y + 1) * width + x + 1];
       }
 
-      // Keep pixel only if it's a local maximum
       if (mag >= neighbor1 && mag >= neighbor2) {
         result[idx] = mag;
       }
@@ -246,10 +198,6 @@ function nonMaxSuppression(
   return result;
 }
 
-/**
- * Hysteresis thresholding for Canny edge detection
- * Uses double thresholds to connect strong and weak edges
- */
 function hysteresisThreshold(
   edges: Float32Array,
   width: number,
@@ -261,7 +209,6 @@ function hysteresisThreshold(
   const STRONG = 255;
   const WEAK = 50;
 
-  // First pass: mark strong and weak edges
   for (let i = 0; i < edges.length; i++) {
     if (edges[i] >= highThreshold) {
       result[i] = STRONG;
@@ -270,7 +217,6 @@ function hysteresisThreshold(
     }
   }
 
-  // Second pass: trace edges - connect weak edges to strong ones
   let changed = true;
   while (changed) {
     changed = false;
@@ -278,7 +224,6 @@ function hysteresisThreshold(
       for (let x = 1; x < width - 1; x++) {
         const idx = y * width + x;
         if (result[idx] === WEAK) {
-          // Check 8-connected neighbors for strong edge
           for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
               if (result[(y + dy) * width + (x + dx)] === STRONG) {
@@ -294,7 +239,6 @@ function hysteresisThreshold(
     }
   }
 
-  // Final pass: remove remaining weak edges, normalize to 0-1
   for (let i = 0; i < result.length; i++) {
     result[i] = result[i] === STRONG ? 1 : 0;
   }
@@ -302,35 +246,22 @@ function hysteresisThreshold(
   return result;
 }
 
-/**
- * Canny edge detection algorithm
- */
 function detectEdgesCanny(
   gray: Float32Array,
   width: number,
   height: number,
   sensitivity: number
 ): Float32Array {
-  // Map sensitivity (0-100) to thresholds
-  // Higher sensitivity = lower thresholds = more edges detected
   const lowThreshold = Math.max(5, 50 - sensitivity * 0.4);
   const highThreshold = Math.max(20, 100 - sensitivity * 0.7);
 
-  // Compute gradients
   const { magnitude, direction } = computeGradients(gray, width, height);
-
-  // Non-maximum suppression
   const suppressed = nonMaxSuppression(magnitude, direction, width, height);
-
-  // Hysteresis thresholding
   const edges = hysteresisThreshold(suppressed, width, height, lowThreshold, highThreshold);
 
   return edges;
 }
 
-/**
- * Sobel edge detection with sensitivity control
- */
 function detectEdgesSobel(
   gray: Float32Array,
   width: number,
@@ -340,7 +271,6 @@ function detectEdgesSobel(
   const edges = new Float32Array(width * height);
   let maxMagnitude = 0;
 
-  // Apply Sobel filter
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const gx = convolve(gray, width, height, x, y, SOBEL_X);
@@ -353,16 +283,13 @@ function detectEdgesSobel(
     }
   }
 
-  // Normalize to 0-1
   if (maxMagnitude > 0) {
     for (let i = 0; i < edges.length; i++) {
       edges[i] /= maxMagnitude;
     }
   }
 
-  // Apply sensitivity as threshold
-  // Higher sensitivity = lower threshold = more edges kept
-  const threshold = (100 - sensitivity) / 100 * 0.3; // Max threshold of 0.3
+  const threshold = ((100 - sensitivity) / 100) * 0.3;
   for (let i = 0; i < edges.length; i++) {
     if (edges[i] < threshold) {
       edges[i] = 0;
@@ -372,20 +299,17 @@ function detectEdgesSobel(
   return edges;
 }
 
-/**
- * Detect edges with configurable method and preprocessing
- */
-export function detectEdges(
-  imageData: ImageData,
-  options: EdgeDetectionOptions = {}
+function detectEdges(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  method: EdgeMethod,
+  sensitivity: number,
+  preBlur: number,
+  contrast: number
 ): Float32Array {
-  const { method = 'sobel', sensitivity = 50, preBlur = 0, contrast = 1.0 } = options;
-  const { width, height } = imageData;
+  let gray = toGrayscale(data, width, height);
 
-  // Convert to grayscale
-  let gray = toGrayscale(imageData);
-
-  // Apply preprocessing
   if (preBlur > 0) {
     gray = applyGaussianBlur(gray, width, height, preBlur);
   }
@@ -393,7 +317,6 @@ export function detectEdges(
     gray = applyContrast(gray, contrast);
   }
 
-  // Apply selected edge detection method
   if (method === 'canny') {
     return detectEdgesCanny(gray, width, height, sensitivity);
   }
@@ -401,15 +324,56 @@ export function detectEdges(
   return detectEdgesSobel(gray, width, height, sensitivity);
 }
 
-/**
- * Get edge magnitude at a position
- */
-export function getEdgeAt(
-  edges: Float32Array,
-  width: number,
-  x: number,
-  y: number
-): number {
-  const idx = Math.floor(y) * width + Math.floor(x);
-  return edges[idx] || 0;
+// Worker message types
+export interface WorkerRequest {
+  type: 'detectEdges';
+  id: string;
+  payload: {
+    imageData: ArrayBuffer;
+    width: number;
+    height: number;
+    method: EdgeMethod;
+    sensitivity: number;
+    preBlur: number;
+    contrast: number;
+  };
 }
+
+export interface WorkerResponse {
+  type: 'result' | 'error';
+  id: string;
+  payload: { edges: ArrayBuffer } | { message: string };
+}
+
+// Worker message handler
+self.onmessage = (event: MessageEvent<WorkerRequest>) => {
+  const { type, id, payload } = event.data;
+
+  try {
+    if (type === 'detectEdges') {
+      const { imageData, width, height, method, sensitivity, preBlur, contrast } = payload;
+
+      // Reconstruct Uint8ClampedArray from ArrayBuffer
+      const data = new Uint8ClampedArray(imageData);
+
+      const edges = detectEdges(data, width, height, method, sensitivity, preBlur, contrast);
+
+      // Transfer the buffer back (efficient, no copy)
+      const edgesBuffer = edges.buffer as ArrayBuffer;
+      const response: WorkerResponse = {
+        type: 'result',
+        id,
+        payload: { edges: edgesBuffer },
+      };
+
+      self.postMessage(response, { transfer: [edgesBuffer] });
+    }
+  } catch (error) {
+    const response: WorkerResponse = {
+      type: 'error',
+      id,
+      payload: { message: error instanceof Error ? error.message : 'Unknown error' },
+    };
+    self.postMessage(response);
+  }
+};

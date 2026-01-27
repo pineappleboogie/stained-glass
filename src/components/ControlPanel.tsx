@@ -2,7 +2,6 @@
 
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,8 +21,12 @@ import type {
   PointDistribution,
   ColorMode,
   ExportFormat,
+  PresetName,
+  EdgeMethod,
 } from '@/types';
 import { useRef } from 'react';
+import { PRESETS, applyPreset } from '@/lib/presets';
+import { ImagePlus, SplitSquareHorizontal } from 'lucide-react';
 
 interface ControlPanelProps {
   settings: StainedGlassSettings;
@@ -60,28 +63,60 @@ export function ControlPanel({
 
       <Divider />
 
-      {/* Replace Image Button */}
-      {onReplaceImage && (
-        <div className="px-5 py-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            className="w-full text-sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Replace Image
-          </Button>
-        </div>
-      )}
-
       {/* Main Controls */}
       <div className="flex-1 overflow-y-auto px-5 pb-6">
+        {/* Replace Image Button */}
+        {onReplaceImage && (
+          <div className="py-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              className="w-full text-sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImagePlus className="w-4 h-4 mr-2" />
+              Replace Image
+            </Button>
+          </div>
+        )}
+
+        {/* Presets Section */}
+        <section className="py-4">
+          <SectionHeader>Presets</SectionHeader>
+          <div className="space-y-2">
+            <Select
+              value={settings.activePreset}
+              onValueChange={(value: PresetName) => {
+                const newSettings = applyPreset(settings, value);
+                onSettingsChange(newSettings);
+              }}
+              disabled={disabled}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRESETS.map((preset) => (
+                  <SelectItem key={preset.name} value={preset.name}>
+                    {preset.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {PRESETS.find((p) => p.name === settings.activePreset)?.description}
+            </p>
+          </div>
+        </section>
+
+        <Divider />
+
         {/* Cell Generation Section */}
         <section className="py-4">
           <SectionHeader>Cell Generation</SectionHeader>
@@ -101,7 +136,7 @@ export function ControlPanel({
                 max={2000}
                 step={10}
                 value={[settings.cellCount]}
-                onValueChange={([value]) => onSettingsChange({ cellCount: value })}
+                onValueChange={([value]) => onSettingsChange({ cellCount: value, activePreset: 'custom' })}
                 disabled={disabled}
               />
             </div>
@@ -113,7 +148,7 @@ export function ControlPanel({
               <Select
                 value={settings.pointDistribution}
                 onValueChange={(value: PointDistribution) =>
-                  onSettingsChange({ pointDistribution: value })
+                  onSettingsChange({ pointDistribution: value, activePreset: 'custom' })
                 }
                 disabled={disabled}
               >
@@ -145,12 +180,131 @@ export function ControlPanel({
                   step={5}
                   value={[settings.edgeInfluence * 100]}
                   onValueChange={([value]) =>
-                    onSettingsChange({ edgeInfluence: value / 100 })
+                    onSettingsChange({ edgeInfluence: value / 100, activePreset: 'custom' })
                   }
                   disabled={disabled}
                 />
               </div>
             )}
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="relaxation" className="text-sm">
+                  Cell Smoothing
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {settings.relaxationIterations === 0
+                    ? 'Off'
+                    : `${settings.relaxationIterations} ${settings.relaxationIterations === 1 ? 'pass' : 'passes'}`}
+                </span>
+              </div>
+              <Slider
+                id="relaxation"
+                min={0}
+                max={5}
+                step={1}
+                value={[settings.relaxationIterations]}
+                onValueChange={([value]) =>
+                  onSettingsChange({ relaxationIterations: value, activePreset: 'custom' })
+                }
+                disabled={disabled}
+              />
+            </div>
+          </div>
+        </section>
+
+        <Divider />
+
+        {/* Image Processing Section */}
+        <section className="py-4">
+          <SectionHeader>Image Processing</SectionHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="preBlur" className="text-sm">
+                  Pre-blur
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {settings.preBlur === 0 ? 'Off' : settings.preBlur.toFixed(1)}
+                </span>
+              </div>
+              <Slider
+                id="preBlur"
+                min={0}
+                max={10}
+                step={0.5}
+                value={[settings.preBlur]}
+                onValueChange={([value]) =>
+                  onSettingsChange({ preBlur: value, activePreset: 'custom' })
+                }
+                disabled={disabled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="contrast" className="text-sm">
+                  Contrast
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {Math.round(settings.contrast * 100)}%
+                </span>
+              </div>
+              <Slider
+                id="contrast"
+                min={50}
+                max={200}
+                step={5}
+                value={[settings.contrast * 100]}
+                onValueChange={([value]) =>
+                  onSettingsChange({ contrast: value / 100, activePreset: 'custom' })
+                }
+                disabled={disabled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edgeMethod" className="text-sm">
+                Edge Detection
+              </Label>
+              <Select
+                value={settings.edgeMethod}
+                onValueChange={(value: EdgeMethod) =>
+                  onSettingsChange({ edgeMethod: value, activePreset: 'custom' })
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger id="edgeMethod">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sobel">Sobel</SelectItem>
+                  <SelectItem value="canny">Canny</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-baseline">
+                <Label htmlFor="edgeSensitivity" className="text-sm">
+                  Edge Sensitivity
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  {settings.edgeSensitivity}%
+                </span>
+              </div>
+              <Slider
+                id="edgeSensitivity"
+                min={0}
+                max={100}
+                step={5}
+                value={[settings.edgeSensitivity]}
+                onValueChange={([value]) =>
+                  onSettingsChange({ edgeSensitivity: value, activePreset: 'custom' })
+                }
+                disabled={disabled}
+              />
+            </div>
           </div>
         </section>
 
@@ -175,7 +329,7 @@ export function ControlPanel({
                 max={10}
                 step={0.5}
                 value={[settings.lineWidth]}
-                onValueChange={([value]) => onSettingsChange({ lineWidth: value })}
+                onValueChange={([value]) => onSettingsChange({ lineWidth: value, activePreset: 'custom' })}
                 disabled={disabled}
               />
             </div>
@@ -189,14 +343,14 @@ export function ControlPanel({
                   id="lineColor"
                   type="color"
                   value={settings.lineColor}
-                  onChange={(e) => onSettingsChange({ lineColor: e.target.value })}
+                  onChange={(e) => onSettingsChange({ lineColor: e.target.value, activePreset: 'custom' })}
                   className="w-12 h-9 p-1 cursor-pointer"
                   disabled={disabled}
                 />
                 <Input
                   type="text"
                   value={settings.lineColor}
-                  onChange={(e) => onSettingsChange({ lineColor: e.target.value })}
+                  onChange={(e) => onSettingsChange({ lineColor: e.target.value, activePreset: 'custom' })}
                   className="flex-1 font-mono text-sm"
                   disabled={disabled}
                 />
@@ -218,7 +372,7 @@ export function ControlPanel({
               <Select
                 value={settings.colorMode}
                 onValueChange={(value: ColorMode) =>
-                  onSettingsChange({ colorMode: value })
+                  onSettingsChange({ colorMode: value, activePreset: 'custom' })
                 }
                 disabled={disabled}
               >
@@ -249,7 +403,7 @@ export function ControlPanel({
                   max={64}
                   step={4}
                   value={[settings.paletteSize]}
-                  onValueChange={([value]) => onSettingsChange({ paletteSize: value })}
+                  onValueChange={([value]) => onSettingsChange({ paletteSize: value, activePreset: 'custom' })}
                   disabled={disabled}
                 />
               </div>
@@ -271,7 +425,7 @@ export function ControlPanel({
                 step={5}
                 value={[settings.saturation * 100]}
                 onValueChange={([value]) =>
-                  onSettingsChange({ saturation: value / 100 })
+                  onSettingsChange({ saturation: value / 100, activePreset: 'custom' })
                 }
                 disabled={disabled}
               />
@@ -293,7 +447,7 @@ export function ControlPanel({
                 step={5}
                 value={[settings.brightness * 100]}
                 onValueChange={([value]) =>
-                  onSettingsChange({ brightness: value / 100 })
+                  onSettingsChange({ brightness: value / 100, activePreset: 'custom' })
                 }
                 disabled={disabled}
               />
@@ -307,19 +461,15 @@ export function ControlPanel({
         <section className="py-4">
           <SectionHeader>Export</SectionHeader>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="showOriginal" className="text-sm">
-                Show Original
-              </Label>
-              <Switch
-                id="showOriginal"
-                checked={settings.showOriginal}
-                onCheckedChange={(checked) =>
-                  onSettingsChange({ showOriginal: checked })
-                }
-                disabled={disabled}
-              />
-            </div>
+            <Button
+              variant={settings.compareMode ? 'default' : 'outline'}
+              className="w-full text-sm"
+              onClick={() => onSettingsChange({ compareMode: !settings.compareMode })}
+              disabled={disabled}
+            >
+              <SplitSquareHorizontal className="w-4 h-4 mr-2" />
+              {settings.compareMode ? 'Exit Compare' : 'Compare Original'}
+            </Button>
 
             <div className="flex gap-2">
               <Button

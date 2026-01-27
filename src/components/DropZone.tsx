@@ -34,17 +34,17 @@ export function DropZone({ onFileAccepted, className }: DropZoneProps) {
       {...getRootProps()}
       className={cn(
         'flex flex-col items-center justify-center p-12 transition-all cursor-pointer',
-        'bg-card border border-border rounded-md',
+        'bg-card border border-border',
         isDragActive
-          ? 'border-accent bg-accent/5'
-          : 'hover:border-muted-foreground',
+          ? 'border-primary bg-primary/5 shadow-[inset_0_0_20px_rgba(139,69,80,0.1)]'
+          : 'hover:border-accent hover:shadow-[inset_0_0_30px_rgba(180,140,60,0.08)]',
         className
       )}
     >
       <input {...getInputProps()} />
 
       {isDragActive ? (
-        <p className="text-lg text-accent">
+        <p className="text-lg text-primary">
           Drop the image here
         </p>
       ) : (
@@ -57,7 +57,11 @@ export function DropZone({ onFileAccepted, className }: DropZoneProps) {
             Transform your images into beautiful stained glass designs
           </p>
 
-          <div className="w-24 h-px bg-border mb-10" />
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-8 h-px bg-border" />
+            <span className="text-accent text-sm">✦</span>
+            <div className="w-8 h-px bg-border" />
+          </div>
 
           <p className="text-foreground text-lg">
             Drop an image here

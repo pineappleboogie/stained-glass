@@ -33,12 +33,27 @@ export type ColorMode = 'exact' | 'average' | 'palette';
 // Point distribution strategies
 export type PointDistribution = 'uniform' | 'poisson' | 'edge-weighted';
 
+// Edge detection methods
+export type EdgeMethod = 'sobel' | 'canny';
+
+// Preset template names
+export type PresetName = 'fine-detail' | 'bold-shapes' | 'classic' | 'artistic' | 'custom';
+
 // Settings for the stained glass generator
 export interface StainedGlassSettings {
   // Cell generation
   cellCount: number;
   pointDistribution: PointDistribution;
   edgeInfluence: number; // 0-1
+  relaxationIterations: number; // 0-5 (Lloyd's relaxation passes)
+
+  // Image preprocessing
+  preBlur: number; // 0-10 (blur radius before edge detection)
+  contrast: number; // 0.5-2.0 (1.0 = normal)
+
+  // Edge detection
+  edgeMethod: EdgeMethod;
+  edgeSensitivity: number; // 0-100
 
   // Lead lines
   lineWidth: number;
@@ -51,7 +66,10 @@ export interface StainedGlassSettings {
   brightness: number; // 0-2 (1 = 100%)
 
   // View
-  showOriginal: boolean;
+  compareMode: boolean;
+
+  // Presets
+  activePreset: PresetName;
 }
 
 // Default settings
@@ -59,13 +77,19 @@ export const DEFAULT_SETTINGS: StainedGlassSettings = {
   cellCount: 500,
   pointDistribution: 'edge-weighted',
   edgeInfluence: 0.3,
+  relaxationIterations: 0,
+  preBlur: 0,
+  contrast: 1.0,
+  edgeMethod: 'sobel',
+  edgeSensitivity: 50,
   lineWidth: 2,
   lineColor: '#000000',
   colorMode: 'exact',
   paletteSize: 16,
   saturation: 1,
   brightness: 1,
-  showOriginal: false,
+  compareMode: false,
+  activePreset: 'custom',
 };
 
 // Export format
@@ -82,4 +106,12 @@ export interface ProcessingState {
   isLoading: boolean;
   isProcessing: boolean;
   error: string | null;
+}
+
+// Preset template definition
+export interface PresetTemplate {
+  name: PresetName;
+  label: string;
+  description: string;
+  settings: Partial<StainedGlassSettings>;
 }

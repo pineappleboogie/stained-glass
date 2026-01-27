@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  /* Refined Color Palette - Light Mode */
-  --background: 40 20% 97%;           /* Warm white */
-  --foreground: 30 15% 25%;           /* Warm charcoal */
-  --card: 40 15% 95%;                 /* Subtle cream */
-  --card-foreground: 30 15% 25%;
-  --popover: 40 15% 96%;
-  --popover-foreground: 30 15% 25%;
-  --primary: 30 25% 35%;              /* Deep bronze */
-  --primary-foreground: 40 15% 95%;
-  --secondary: 40 10% 92%;
-  --secondary-foreground: 30 15% 30%;
-  --muted: 40 10% 90%;
-  --muted-foreground: 30 10% 50%;
-  --accent: 30 30% 45%;               /* Soft bronze */
-  --accent-foreground: 40 15% 95%;
-  --destructive: 0 50% 50%;
+  /* Florentine Renaissance Palette - Light Mode */
+  --background: 35 25% 95%;           /* Warm limestone */
+  --foreground: 20 30% 18%;           /* Deep umber */
+  --card: 38 30% 93%;                 /* Parchment */
+  --card-foreground: 20 30% 18%;
+  --popover: 38 28% 94%;
+  --popover-foreground: 20 30% 18%;
+  --primary: 350 45% 35%;             /* Burgundy wine */
+  --primary-foreground: 40 30% 95%;   /* Cream */
+  --secondary: 35 15% 88%;            /* Warm stone */
+  --secondary-foreground: 20 25% 25%;
+  --muted: 30 12% 82%;                /* Faded stone */
+  --muted-foreground: 25 15% 45%;     /* Weathered bronze */
+  --accent: 42 55% 45%;               /* Antique gold */
+  --accent-foreground: 30 40% 15%;    /* Deep brown */
+  --destructive: 0 55% 45%;
   --destructive-foreground: 0 0% 98%;
-  --border: 30 15% 80%;               /* Subtle warm border */
-  --input: 40 10% 92%;
-  --ring: 30 25% 50%;
-  --radius: 0.375rem;
+  --border: 30 18% 75%;               /* Warm taupe */
+  --input: 35 18% 90%;
+  --ring: 350 40% 45%;                /* Burgundy glow */
+  --radius: 0.25rem;
 }
 
 @theme inline {
@@ -48,40 +48,41 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-serif: var(--font-fell);
-  --font-sans: var(--font-fell);
+  --default-font-family: Georgia, 'Times New Roman', serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-sans: Georgia, 'Times New Roman', serif;
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Refined Color Palette - Dark Mode */
-    --background: 30 20% 8%;          /* Deep warm black */
-    --foreground: 40 15% 88%;         /* Warm cream */
-    --card: 30 15% 12%;               /* Dark bronze */
-    --card-foreground: 40 15% 88%;
-    --popover: 30 15% 11%;
-    --popover-foreground: 40 15% 88%;
-    --primary: 30 20% 60%;            /* Light bronze */
-    --primary-foreground: 30 20% 10%;
-    --secondary: 30 12% 16%;
-    --secondary-foreground: 40 12% 80%;
-    --muted: 30 10% 18%;
-    --muted-foreground: 30 10% 55%;
-    --accent: 30 25% 50%;             /* Soft bronze */
-    --accent-foreground: 30 20% 10%;
-    --destructive: 0 45% 45%;
+    /* Florentine Renaissance Palette - Dark Mode */
+    --background: 20 25% 8%;          /* Deep umber */
+    --foreground: 38 25% 88%;         /* Warm ivory */
+    --card: 15 20% 12%;               /* Dark mahogany */
+    --card-foreground: 38 25% 88%;
+    --popover: 15 18% 11%;
+    --popover-foreground: 38 25% 88%;
+    --primary: 350 35% 55%;           /* Rose gold */
+    --primary-foreground: 20 30% 10%; /* Deep brown */
+    --secondary: 20 18% 16%;          /* Walnut */
+    --secondary-foreground: 38 18% 80%;
+    --muted: 20 12% 20%;              /* Umber shadow */
+    --muted-foreground: 25 15% 55%;   /* Dusty rose */
+    --accent: 42 45% 50%;             /* Warm brass */
+    --accent-foreground: 20 30% 10%;  /* Deep umber */
+    --destructive: 0 50% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 30 15% 25%;             /* Subtle dark border */
-    --input: 30 12% 18%;
-    --ring: 30 20% 45%;
+    --border: 25 20% 22%;             /* Bronze shadow */
+    --input: 20 15% 18%;
+    --ring: 350 35% 50%;              /* Rose glow */
   }
 }
 
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-serif), Georgia, 'Times New Roman', serif;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 * {

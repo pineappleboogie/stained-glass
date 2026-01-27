@@ -38,7 +38,7 @@ export default function Home() {
             <Preview
               svgString={svgString}
               originalImageUrl={originalImageUrl}
-              showOriginal={settings.showOriginal}
+              compareMode={settings.compareMode}
               isProcessing={processingState.isLoading || processingState.isProcessing}
               aspectRatio={aspectRatio}
               className="flex-1 min-h-0"
