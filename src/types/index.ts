@@ -33,6 +33,9 @@ export type ColorMode = 'exact' | 'average' | 'palette';
 // Point distribution strategies
 export type PointDistribution = 'uniform' | 'poisson' | 'edge-weighted';
 
+// Frame styles
+export type FrameStyle = 'none' | 'simple' | 'segmented';
+
 // Edge detection methods
 export type EdgeMethod = 'sobel' | 'canny';
 
@@ -68,6 +71,11 @@ export interface StainedGlassSettings {
   // View
   compareMode: boolean;
 
+  // Frame
+  frameStyle: FrameStyle;
+  frameWidth: number; // 2-15% of min(width, height)
+  frameCellSize: number; // Size of geometric cells (10-50px)
+
   // Presets
   activePreset: PresetName;
 }
@@ -89,6 +97,9 @@ export const DEFAULT_SETTINGS: StainedGlassSettings = {
   saturation: 1,
   brightness: 1,
   compareMode: false,
+  frameStyle: 'none',
+  frameWidth: 5,
+  frameCellSize: 30,
   activePreset: 'custom',
 };
 

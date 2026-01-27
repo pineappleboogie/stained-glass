@@ -8,7 +8,6 @@ interface PreviewProps {
   originalImageUrl: string | null;
   compareMode: boolean;
   isProcessing: boolean;
-  aspectRatio?: number;
   className?: string;
 }
 
@@ -17,7 +16,6 @@ export function Preview({
   originalImageUrl,
   compareMode,
   isProcessing,
-  aspectRatio,
   className,
 }: PreviewProps) {
   const [sliderPosition, setSliderPosition] = useState(50);
@@ -49,7 +47,7 @@ export function Preview({
     <div
       ref={containerRef}
       className={cn(
-        'relative rounded-lg overflow-hidden flex items-center justify-center',
+        'relative overflow-hidden flex items-center justify-center bg-muted',
         compareMode && 'cursor-ew-resize select-none',
         className
       )}
@@ -68,32 +66,35 @@ export function Preview({
 
       <div
         className="relative w-full h-full flex items-center justify-center"
-        style={aspectRatio ? { aspectRatio: aspectRatio } : undefined}
       >
         {/* Stained glass layer (bottom) */}
         {svgString ? (
           <div
-            className="max-w-full max-h-full flex items-center justify-center [&>svg]:max-w-full [&>svg]:max-h-full [&>svg]:w-auto [&>svg]:h-auto"
-            dangerouslySetInnerHTML={{ __html: svgString }}
-          />
+            className="absolute inset-4 flex items-center justify-center"
+          >
+            <div
+              className="w-full h-full [&>svg]:w-full [&>svg]:h-full"
+              dangerouslySetInnerHTML={{ __html: svgString }}
+            />
+          </div>
         ) : originalImageUrl ? (
           <img
             src={originalImageUrl}
             alt="Original"
-            className="max-w-full max-h-full object-contain"
+            className="absolute inset-4 w-[calc(100%-2rem)] h-[calc(100%-2rem)] object-contain"
           />
         ) : null}
 
         {/* Original image overlay (clipped by slider) - only in compare mode */}
         {compareMode && originalImageUrl && svgString && (
           <div
-            className="absolute inset-0 flex items-center justify-center overflow-hidden"
+            className="absolute inset-4 flex items-center justify-center overflow-hidden"
             style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
           >
             <img
               src={originalImageUrl}
               alt="Original"
-              className="max-w-full max-h-full object-contain"
+              className="w-full h-full object-contain"
               draggable={false}
             />
           </div>

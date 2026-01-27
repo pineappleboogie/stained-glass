@@ -1,4 +1,5 @@
 import type { Point, RGB, ColoredCell } from '@/types';
+import { rgbToHex as frameRgbToHex, type FrameElement } from './frames';
 
 /**
  * Convert RGB to hex color string
@@ -31,22 +32,42 @@ export interface SVGOptions {
   lineColor: string;
   width: number;
   height: number;
+  frameElements?: FrameElement[];
 }
 
 /**
- * Generate SVG string from colored cells
+ * Generate SVG string from colored cells with optional frame
  */
 export function generateSVG(cells: ColoredCell[], options: SVGOptions): string {
-  const { lineWidth, lineColor, width, height } = options;
+  const { lineWidth, lineColor, width, height, frameElements = [] } = options;
 
-  const paths = cells.map((cell) => {
+  const svgParts: string[] = [];
+
+  // Add white background for transparent images
+  svgParts.push(`  <rect width="${width}" height="${height}" fill="#ffffff"/>`);
+
+  // Add frame elements first (background layer)
+  if (frameElements.length > 0) {
+    svgParts.push('  <g class="frame">');
+    for (const element of frameElements) {
+      const d = polygonToPath(element.polygon);
+      const fill = frameRgbToHex(element.color);
+      svgParts.push(`    <path d="${d}" fill="${fill}" stroke="${lineColor}" stroke-width="${lineWidth}" stroke-linejoin="round"/>`);
+    }
+    svgParts.push('  </g>');
+  }
+
+  // Add artwork cells
+  svgParts.push('  <g class="artwork">');
+  for (const cell of cells) {
     const d = polygonToPath(cell.polygon);
     const fill = rgbToHex(cell.color);
-    return `  <path d="${d}" fill="${fill}" stroke="${lineColor}" stroke-width="${lineWidth}" stroke-linejoin="round"/>`;
-  });
+    svgParts.push(`    <path d="${d}" fill="${fill}" stroke="${lineColor}" stroke-width="${lineWidth}" stroke-linejoin="round"/>`);
+  }
+  svgParts.push('  </g>');
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
-${paths.join('\n')}
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet">
+${svgParts.join('\n')}
 </svg>`;
 }
 

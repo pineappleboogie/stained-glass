@@ -17,18 +17,22 @@ function calculateCentroid(polygon: Point[]): Point {
 /**
  * Generate Voronoi diagram from seed points
  * Uses d3-delaunay for efficient computation
+ * @param minX - Optional left bound (default 0)
+ * @param minY - Optional top bound (default 0)
  */
 export function generateVoronoi(
   points: Point[],
   width: number,
-  height: number
+  height: number,
+  minX: number = 0,
+  minY: number = 0
 ): VoronoiResult {
   // Flatten points for d3-delaunay
   const flatPoints = points.flatMap((p) => [p.x, p.y]);
 
   // Create Delaunay triangulation and Voronoi diagram
   const delaunay = new Delaunay(flatPoints);
-  const voronoi = delaunay.voronoi([0, 0, width, height]);
+  const voronoi = delaunay.voronoi([minX, minY, width, height]);
 
   // Extract cells
   const cells: VoronoiCell[] = [];
@@ -60,17 +64,21 @@ export function generateVoronoi(
 /**
  * Apply Lloyd's relaxation to make cells more uniform
  * Moves seed points toward cell centroids
+ * @param minX - Optional left bound (default 0)
+ * @param minY - Optional top bound (default 0)
  */
 export function relaxPoints(
   points: Point[],
   width: number,
   height: number,
-  iterations: number = 1
+  iterations: number = 1,
+  minX: number = 0,
+  minY: number = 0
 ): Point[] {
   let currentPoints = [...points];
 
   for (let iter = 0; iter < iterations; iter++) {
-    const result = generateVoronoi(currentPoints, width, height);
+    const result = generateVoronoi(currentPoints, width, height, minX, minY);
     const newPoints: Point[] = [];
 
     for (let i = 0; i < currentPoints.length; i++) {

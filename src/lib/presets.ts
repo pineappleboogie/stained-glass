@@ -32,7 +32,7 @@ export const PRESETS: PresetTemplate[] = [
   {
     name: 'classic',
     label: 'Classic',
-    description: 'Traditional stained glass appearance',
+    description: 'Traditional stained glass appearance with simple frame',
     settings: {
       cellCount: 500,
       pointDistribution: 'edge-weighted',
@@ -43,6 +43,8 @@ export const PRESETS: PresetTemplate[] = [
       colorMode: 'average',
       edgeSensitivity: 50,
       edgeMethod: 'sobel',
+      frameStyle: 'simple',
+      frameWidth: 5,
     },
   },
   {

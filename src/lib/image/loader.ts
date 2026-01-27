@@ -32,12 +32,17 @@ export async function loadImageToCanvas(file: File): Promise<LoadedImage> {
       canvas.width = width;
       canvas.height = height;
 
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { alpha: false });
       if (!ctx) {
         reject(new Error('Failed to get canvas context'));
         return;
       }
 
+      // Fill with white background for transparent images
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw image on top (composites transparent areas onto white)
       ctx.drawImage(img, 0, 0, width, height);
       const imageData = ctx.getImageData(0, 0, width, height);
 

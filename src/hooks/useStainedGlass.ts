@@ -6,6 +6,7 @@ import type {
   ColoredCell,
   ExportFormat,
   ProcessingState,
+  VoronoiCell,
 } from '@/types';
 import { DEFAULT_SETTINGS } from '@/types';
 import { loadImageToCanvas, type LoadedImage } from '@/lib/image/loader';
@@ -19,6 +20,7 @@ import {
 import { generateVoronoi, relaxPoints } from '@/lib/voronoi/generator';
 import { generateSVG } from '@/lib/svg/generator';
 import { downloadSVG, downloadPNG } from '@/lib/svg/exporter';
+import { generateFrame, type FrameElement } from '@/lib/svg/frames';
 import { useImageWorker } from './useWorker';
 
 interface UseStainedGlassReturn {
@@ -54,8 +56,17 @@ export function useStainedGlass(): UseStainedGlassReturn {
   const edgesRef = useRef<Float32Array | null>(null);
   const lastEdgeSettingsRef = useRef<string>('');
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Cache colored cells for SVG-only updates (line width/color changes)
+  const coloredCellsRef = useRef<ColoredCell[] | null>(null);
+  // Cache Voronoi cells for color-only updates (color mode/saturation/brightness changes)
+  const voronoiCellsRef = useRef<VoronoiCell[] | null>(null);
+  // Cache frame elements for SVG regeneration
+  const frameElementsRef = useRef<FrameElement[]>([]);
+  // Ref for line settings to avoid triggering full reprocessing
+  const lineSettingsRef = useRef({ lineWidth: settings.lineWidth, lineColor: settings.lineColor });
 
   // Extract processing-relevant settings (exclude view-only settings like showOriginal)
+  // Note: lineWidth and lineColor are SVG-only settings, handled separately
   const {
     cellCount,
     pointDistribution,
@@ -65,13 +76,19 @@ export function useStainedGlass(): UseStainedGlassReturn {
     contrast,
     edgeMethod,
     edgeSensitivity,
-    lineWidth,
-    lineColor,
     colorMode,
     paletteSize,
     saturation,
     brightness,
+    frameStyle,
+    frameWidth,
+    frameCellSize,
   } = settings;
+
+  // Ref for color settings to handle color-only updates separately
+  const colorSettingsRef = useRef({ colorMode, paletteSize, saturation, brightness });
+  // Ref for frame cell size to handle frame-only updates separately
+  const frameCellSizeRef = useRef(frameCellSize);
 
   // Process the current image with current settings
   const processImage = useCallback(async () => {
@@ -108,42 +125,94 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
       const edges = edgesRef.current;
 
-      // Generate points based on distribution strategy
+      // Generate frame and get inner bounds for artwork
+      const frameResult = generateFrame(
+        {
+          style: frameStyle,
+          width,
+          height,
+          frameWidth,
+          cellSize: frameCellSizeRef.current,
+          lineWidth: lineSettingsRef.current.lineWidth,
+          lineColor: lineSettingsRef.current.lineColor,
+        },
+        imageData
+      );
+
+      // Cache frame elements for SVG regeneration
+      frameElementsRef.current = frameResult.elements;
+
+      // Calculate bounds for Voronoi generation (inside the frame)
+      const { innerBounds } = frameResult;
+      const artworkWidth = innerBounds.right - innerBounds.left;
+      const artworkHeight = innerBounds.bottom - innerBounds.top;
+
+      // Generate points based on distribution strategy (within inner bounds)
       let points;
       switch (pointDistribution) {
         case 'uniform':
-          points = generateUniformPoints(width, height, cellCount);
+          points = generateUniformPoints(artworkWidth, artworkHeight, cellCount);
           break;
         case 'poisson':
-          points = generatePoissonPoints(width, height, cellCount);
+          points = generatePoissonPoints(artworkWidth, artworkHeight, cellCount);
           break;
         case 'edge-weighted':
+          // For edge-weighted, we need to adjust the edge map sampling
           points = generateEdgeWeightedPoints(
             edges,
             width,
             height,
             cellCount,
-            edgeInfluence
+            edgeInfluence,
+            innerBounds.left,
+            innerBounds.top,
+            artworkWidth,
+            artworkHeight
           );
           break;
       }
 
-      // Apply Lloyd's relaxation if enabled (smooths cell shapes)
-      if (relaxationIterations > 0) {
-        points = relaxPoints(points, width, height, relaxationIterations);
+      // Offset points if we're not using edge-weighted (which handles offset internally)
+      if (pointDistribution !== 'edge-weighted' && frameStyle !== 'none') {
+        points = points.map(p => ({
+          x: p.x + innerBounds.left,
+          y: p.y + innerBounds.top,
+        }));
       }
 
-      // Generate Voronoi diagram
-      const voronoiResult = generateVoronoi(points, width, height);
+      // Apply Lloyd's relaxation if enabled (smooths cell shapes)
+      if (relaxationIterations > 0) {
+        points = relaxPoints(
+          points,
+          innerBounds.right,
+          innerBounds.bottom,
+          relaxationIterations,
+          innerBounds.left,
+          innerBounds.top
+        );
+      }
 
-      // Sample colors for each cell
+      // Generate Voronoi diagram within inner bounds
+      const voronoiResult = generateVoronoi(
+        points,
+        innerBounds.right,
+        innerBounds.bottom,
+        innerBounds.left,
+        innerBounds.top
+      );
+
+      // Cache Voronoi cells for color-only updates
+      voronoiCellsRef.current = voronoiResult.cells;
+
+      // Sample colors for each cell (use ref for color settings to avoid dependency)
+      const { colorMode: cm, paletteSize: ps, saturation: sat, brightness: br } = colorSettingsRef.current;
       const colors = sampleColors(
         imageData,
         voronoiResult.cells,
-        colorMode,
-        paletteSize,
-        saturation,
-        brightness
+        cm,
+        ps,
+        sat,
+        br
       );
 
       // Create colored cells
@@ -152,12 +221,16 @@ export function useStainedGlass(): UseStainedGlassReturn {
         color: colors[i],
       }));
 
-      // Generate SVG
+      // Cache cells for SVG-only updates
+      coloredCellsRef.current = coloredCells;
+
+      // Generate SVG with frame elements (use ref for line settings to avoid dependency)
       const svg = generateSVG(coloredCells, {
-        lineWidth,
-        lineColor,
+        lineWidth: lineSettingsRef.current.lineWidth,
+        lineColor: lineSettingsRef.current.lineColor,
         width,
         height,
+        frameElements: frameElementsRef.current,
       });
 
       setSvgString(svg);
@@ -179,15 +252,157 @@ export function useStainedGlass(): UseStainedGlassReturn {
     contrast,
     edgeMethod,
     edgeSensitivity,
-    lineWidth,
-    lineColor,
-    colorMode,
-    paletteSize,
-    saturation,
-    brightness,
+    frameStyle,
+    frameWidth,
     detectEdgesWorker,
     isWorkerReady,
   ]);
+
+  // Keep line settings ref in sync
+  useEffect(() => {
+    lineSettingsRef.current = { lineWidth: settings.lineWidth, lineColor: settings.lineColor };
+  }, [settings.lineWidth, settings.lineColor]);
+
+  // Keep color settings ref in sync
+  useEffect(() => {
+    colorSettingsRef.current = { colorMode, paletteSize, saturation, brightness };
+  }, [colorMode, paletteSize, saturation, brightness]);
+
+  // Keep frame cell size ref in sync
+  useEffect(() => {
+    frameCellSizeRef.current = frameCellSize;
+  }, [frameCellSize]);
+
+  // Regenerate frame only when frameCellSize changes (no cell regeneration needed)
+  const regenerateFrame = useCallback(() => {
+    const loadedImage = loadedImageRef.current;
+    const coloredCells = coloredCellsRef.current;
+
+    if (!loadedImage || !coloredCells) return;
+
+    const { imageData, width, height } = loadedImage;
+
+    // Regenerate frame elements with new cell size
+    const frameResult = generateFrame(
+      {
+        style: frameStyle,
+        width,
+        height,
+        frameWidth,
+        cellSize: frameCellSize,
+        lineWidth: lineSettingsRef.current.lineWidth,
+        lineColor: lineSettingsRef.current.lineColor,
+      },
+      imageData
+    );
+
+    // Update cached frame elements
+    frameElementsRef.current = frameResult.elements;
+
+    // Generate SVG with existing cells and new frame
+    const svg = generateSVG(coloredCells, {
+      lineWidth: lineSettingsRef.current.lineWidth,
+      lineColor: lineSettingsRef.current.lineColor,
+      width,
+      height,
+      frameElements: frameResult.elements,
+    });
+
+    setSvgString(svg);
+  }, [frameStyle, frameWidth, frameCellSize]);
+
+  // Handle frame-only updates (debounced)
+  useEffect(() => {
+    if (coloredCellsRef.current && frameStyle === 'segmented') {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        regenerateFrame();
+      }, 150);
+    }
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [frameCellSize, regenerateFrame, frameStyle]);
+
+  // Re-sample colors only when color settings change (no cell regeneration needed)
+  const resampleColors = useCallback(() => {
+    const loadedImage = loadedImageRef.current;
+    const voronoiCells = voronoiCellsRef.current;
+
+    if (!loadedImage || !voronoiCells) return;
+
+    const { imageData, width, height } = loadedImage;
+
+    // Sample colors with current settings
+    const colors = sampleColors(
+      imageData,
+      voronoiCells,
+      colorMode,
+      paletteSize,
+      saturation,
+      brightness
+    );
+
+    // Create colored cells
+    const coloredCells: ColoredCell[] = voronoiCells.map((cell, i) => ({
+      polygon: cell.polygon,
+      color: colors[i],
+    }));
+
+    // Cache cells for SVG-only updates
+    coloredCellsRef.current = coloredCells;
+
+    // Generate SVG
+    const svg = generateSVG(coloredCells, {
+      lineWidth: lineSettingsRef.current.lineWidth,
+      lineColor: lineSettingsRef.current.lineColor,
+      width,
+      height,
+      frameElements: frameElementsRef.current,
+    });
+
+    setSvgString(svg);
+  }, [colorMode, paletteSize, saturation, brightness]);
+
+  // Handle color-only updates (debounced)
+  useEffect(() => {
+    if (voronoiCellsRef.current) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        resampleColors();
+      }, 150);
+    }
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [resampleColors]);
+
+  // Regenerate SVG only (for line width/color changes - no reprocessing needed)
+  const regenerateSVG = useCallback(() => {
+    const loadedImage = loadedImageRef.current;
+    const coloredCells = coloredCellsRef.current;
+
+    if (!loadedImage || !coloredCells) return;
+
+    const { width, height } = loadedImage;
+    const svg = generateSVG(coloredCells, {
+      lineWidth: settings.lineWidth,
+      lineColor: settings.lineColor,
+      width,
+      height,
+      frameElements: frameElementsRef.current,
+    });
+
+    setSvgString(svg);
+  }, [settings.lineWidth, settings.lineColor]);
 
   // Debounced processing
   const debouncedProcess = useCallback(() => {
@@ -210,6 +425,13 @@ export function useStainedGlass(): UseStainedGlassReturn {
       }
     };
   }, [debouncedProcess]);
+
+  // Regenerate SVG immediately when line settings change (no debounce needed)
+  useEffect(() => {
+    if (coloredCellsRef.current) {
+      regenerateSVG();
+    }
+  }, [regenerateSVG]);
 
   // Load a new image
   const loadImage = useCallback(

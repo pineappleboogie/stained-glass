@@ -122,25 +122,47 @@ export function generatePoissonPoints(
 /**
  * Generate points weighted by edge density
  * More points are placed near edges in the image
+ * @param offsetX - Optional X offset for generated points (for frame support)
+ * @param offsetY - Optional Y offset for generated points (for frame support)
+ * @param boundsWidth - Optional width constraint (defaults to full width)
+ * @param boundsHeight - Optional height constraint (defaults to full height)
  */
 export function generateEdgeWeightedPoints(
   edges: Float32Array,
   width: number,
   height: number,
   count: number,
-  edgeInfluence: number
+  edgeInfluence: number,
+  offsetX: number = 0,
+  offsetY: number = 0,
+  boundsWidth?: number,
+  boundsHeight?: number
 ): Point[] {
   const points: Point[] = [];
 
-  // Calculate cumulative distribution for weighted sampling
-  const weights = new Float32Array(edges.length);
+  // Use provided bounds or full image
+  const targetWidth = boundsWidth ?? width;
+  const targetHeight = boundsHeight ?? height;
+
+  // Calculate cumulative distribution for weighted sampling within bounds
+  const weights: number[] = [];
+  const coords: { x: number; y: number }[] = [];
   let totalWeight = 0;
 
-  for (let i = 0; i < edges.length; i++) {
-    // Blend between uniform (0) and edge-weighted (1)
-    const weight = 1 - edgeInfluence + edgeInfluence * (edges[i] + 0.1);
-    totalWeight += weight;
-    weights[i] = totalWeight;
+  const startX = Math.floor(offsetX);
+  const startY = Math.floor(offsetY);
+  const endX = Math.min(width, Math.ceil(offsetX + targetWidth));
+  const endY = Math.min(height, Math.ceil(offsetY + targetHeight));
+
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      const i = y * width + x;
+      // Blend between uniform (0) and edge-weighted (1)
+      const weight = 1 - edgeInfluence + edgeInfluence * (edges[i] + 0.1);
+      totalWeight += weight;
+      weights.push(totalWeight);
+      coords.push({ x, y });
+    }
   }
 
   // Generate points using weighted random sampling
@@ -159,14 +181,12 @@ export function generateEdgeWeightedPoints(
       }
     }
 
-    // Convert index to coordinates
-    const y = Math.floor(lo / width);
-    const x = lo % width;
+    const coord = coords[lo];
 
     // Add some jitter to avoid grid alignment
     points.push({
-      x: x + Math.random() - 0.5,
-      y: y + Math.random() - 0.5,
+      x: coord.x + Math.random() - 0.5,
+      y: coord.y + Math.random() - 0.5,
     });
   }
 

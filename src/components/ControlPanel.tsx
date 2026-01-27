@@ -23,6 +23,7 @@ import type {
   ExportFormat,
   PresetName,
   EdgeMethod,
+  FrameStyle,
 } from '@/types';
 import { useRef } from 'react';
 import { PRESETS, applyPreset } from '@/lib/presets';
@@ -356,6 +357,86 @@ export function ControlPanel({
                 />
               </div>
             </div>
+          </div>
+        </section>
+
+        <Divider />
+
+        {/* Frame Section */}
+        <section className="py-4">
+          <SectionHeader>Frame</SectionHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="frameStyle" className="text-sm">
+                Frame Style
+              </Label>
+              <Select
+                value={settings.frameStyle}
+                onValueChange={(value: FrameStyle) =>
+                  onSettingsChange({ frameStyle: value, activePreset: 'custom' })
+                }
+                disabled={disabled}
+              >
+                <SelectTrigger id="frameStyle">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="simple">Simple Border</SelectItem>
+                  <SelectItem value="segmented">Segmented Border</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {settings.frameStyle !== 'none' && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="frameWidth" className="text-sm">
+                      Frame Width
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {settings.frameWidth}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="frameWidth"
+                    min={2}
+                    max={15}
+                    step={1}
+                    value={[settings.frameWidth]}
+                    onValueChange={([value]) =>
+                      onSettingsChange({ frameWidth: value, activePreset: 'custom' })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+
+                {settings.frameStyle === 'segmented' && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-baseline">
+                      <Label htmlFor="frameCellSize" className="text-sm">
+                        Segment Size
+                      </Label>
+                      <span className="text-sm text-muted-foreground">
+                        {settings.frameCellSize}px
+                      </span>
+                    </div>
+                    <Slider
+                      id="frameCellSize"
+                      min={30}
+                      max={150}
+                      step={10}
+                      value={[settings.frameCellSize]}
+                      onValueChange={([value]) =>
+                        onSettingsChange({ frameCellSize: value, activePreset: 'custom' })
+                      }
+                      disabled={disabled}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </section>
 

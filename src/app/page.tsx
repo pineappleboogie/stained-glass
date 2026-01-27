@@ -11,16 +11,12 @@ export default function Home() {
     svgString,
     originalImageUrl,
     processingState,
-    imageDimensions,
     setSettings,
     loadImage,
     exportImage,
   } = useStainedGlass();
 
   const hasImage = !!originalImageUrl;
-  const aspectRatio = imageDimensions
-    ? imageDimensions.width / imageDimensions.height
-    : undefined;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -34,13 +30,12 @@ export default function Home() {
       ) : (
         <div className="flex-1 flex min-h-0">
           {/* Preview area - fills remaining space */}
-          <div className="flex-1 min-w-0 p-6 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col">
             <Preview
               svgString={svgString}
               originalImageUrl={originalImageUrl}
               compareMode={settings.compareMode}
               isProcessing={processingState.isLoading || processingState.isProcessing}
-              aspectRatio={aspectRatio}
               className="flex-1 min-h-0"
             />
 
