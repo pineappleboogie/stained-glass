@@ -27,11 +27,15 @@ import type {
   PresetName,
   EdgeMethod,
   FrameStyle,
+  SettingsSection,
 } from '@/types';
-import { useRef } from 'react';
+import { getDefaultsForSection } from '@/types';
+import { useRef, useState, useEffect } from 'react';
 import { PRESETS, applyPreset } from '@/lib/presets';
 import { getPalettesByCategory } from '@/lib/color-palettes';
-import { ImagePlus, SplitSquareHorizontal } from 'lucide-react';
+import { copySVGToClipboard } from '@/lib/svg/exporter';
+import { ImagePlus, SplitSquareHorizontal, Copy, Check, Download, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface ControlPanelProps {
   settings: StainedGlassSettings;
@@ -39,6 +43,7 @@ interface ControlPanelProps {
   onExport: (format: ExportFormat) => void;
   onReplaceImage?: (file: File) => void;
   disabled?: boolean;
+  svgString: string | null;
 }
 
 export function ControlPanel({
@@ -47,8 +52,34 @@ export function ControlPanel({
   onExport,
   onReplaceImage,
   disabled = false,
+  svgString,
 }: ControlPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const { setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch for theme - use layout effect equivalent
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleSectionReset = (section: SettingsSection) => {
+    const defaults = getDefaultsForSection(section);
+    onSettingsChange({ ...defaults, activePreset: 'custom' });
+  };
+
+  const handleCopySVG = async () => {
+    if (!svgString) return;
+    const success = await copySVGToClipboard(svgString);
+    if (success) {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,7 +95,25 @@ export function ControlPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <PanelHeader title="VITRUM" subtitle="Stained Glass Studio" />
+      <div className="relative">
+        <PanelHeader title="VITRUM" subtitle="Stained Glass Studio" />
+        {/* Theme toggle button */}
+        {mounted && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="absolute top-4 right-4 h-8 w-8 text-muted-foreground hover:text-foreground"
+            title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {resolvedTheme === 'dark' ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+      </div>
 
       <Divider />
 
@@ -124,7 +173,7 @@ export function ControlPanel({
 
         {/* Cell Generation Section */}
         <section className="py-4">
-          <SectionHeader>Cell Generation</SectionHeader>
+          <SectionHeader onReset={() => handleSectionReset('cellGeneration')}>Cell Generation</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between items-baseline">
@@ -222,7 +271,7 @@ export function ControlPanel({
 
         {/* Image Processing Section */}
         <section className="py-4">
-          <SectionHeader>Image Processing</SectionHeader>
+          <SectionHeader onReset={() => handleSectionReset('imageProcessing')}>Image Processing</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between items-baseline">
@@ -317,7 +366,7 @@ export function ControlPanel({
 
         {/* Lead Lines Section */}
         <section className="py-4">
-          <SectionHeader>Lead Lines</SectionHeader>
+          <SectionHeader onReset={() => handleSectionReset('leadLines')}>Lead Lines</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between items-baseline">
@@ -368,7 +417,7 @@ export function ControlPanel({
 
         {/* Frame Section */}
         <section className="py-4">
-          <SectionHeader>Frame</SectionHeader>
+          <SectionHeader onReset={() => handleSectionReset('frame')}>Frame</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="frameStyle" className="text-sm">
@@ -565,7 +614,7 @@ export function ControlPanel({
 
         {/* Color Section */}
         <section className="py-4">
-          <SectionHeader>Color</SectionHeader>
+          <SectionHeader onReset={() => handleSectionReset('color')}>Color</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="colorPalette" className="text-sm">
@@ -717,13 +766,35 @@ export function ControlPanel({
               {settings.compareMode ? 'Exit Compare' : 'Compare Original'}
             </Button>
 
+            {/* Copy SVG - Primary Action */}
+            <Button
+              className="w-full"
+              onClick={handleCopySVG}
+              disabled={disabled || !svgString}
+            >
+              {copySuccess ? (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy SVG
+                </>
+              )}
+            </Button>
+
+            {/* Download buttons - Secondary Actions */}
             <div className="flex gap-2">
               <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => onExport('svg')}
                 disabled={disabled}
               >
-                Export SVG
+                <Download className="w-4 h-4 mr-2" />
+                SVG
               </Button>
               <Button
                 variant="outline"
@@ -731,7 +802,8 @@ export function ControlPanel({
                 onClick={() => onExport('png')}
                 disabled={disabled}
               >
-                Export PNG
+                <Download className="w-4 h-4 mr-2" />
+                PNG
               </Button>
             </div>
           </div>

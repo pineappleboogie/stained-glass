@@ -9,6 +9,7 @@ import type {
   VoronoiCell,
 } from '@/types';
 import { DEFAULT_SETTINGS } from '@/types';
+import { useSettingsHistory } from './useSettingsHistory';
 import { loadImageToCanvas, type LoadedImage } from '@/lib/image/loader';
 import { detectEdges } from '@/lib/image/edge-detection';
 import { sampleColors } from '@/lib/image/sampler';
@@ -35,10 +36,31 @@ interface UseStainedGlassReturn {
   setSettings: (settings: Partial<StainedGlassSettings>) => void;
   loadImage: (file: File) => Promise<void>;
   exportImage: (format: ExportFormat) => Promise<void>;
+
+  // History
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export function useStainedGlass(): UseStainedGlassReturn {
+  // Settings history for undo/redo
+  const {
+    currentSettings: historySettings,
+    pushSettings,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useSettingsHistory({ initialSettings: DEFAULT_SETTINGS });
+
   const [settings, setSettingsState] = useState<StainedGlassSettings>(DEFAULT_SETTINGS);
+
+  // Sync settings state with history when undo/redo occurs
+  useEffect(() => {
+    setSettingsState(historySettings);
+  }, [historySettings]);
   const [svgString, setSvgString] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [processingState, setProcessingState] = useState<ProcessingState>({
@@ -63,7 +85,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
   // Cache frame elements for SVG regeneration
   const frameElementsRef = useRef<FrameElement[]>([]);
   // Ref for line settings to avoid triggering full reprocessing
-  const lineSettingsRef = useRef({ lineWidth: settings.lineWidth, lineColor: settings.lineColor });
+  const lineSettingsRef = useRef({ lineWidth: DEFAULT_SETTINGS.lineWidth, lineColor: DEFAULT_SETTINGS.lineColor });
 
   // Extract processing-relevant settings (exclude view-only settings like showOriginal)
   // Note: lineWidth and lineColor are SVG-only settings, handled separately
@@ -88,18 +110,24 @@ export function useStainedGlass(): UseStainedGlassReturn {
     frameHueShift,
     frameSaturation,
     frameBrightness,
-  } = settings;
+  } = settings ?? DEFAULT_SETTINGS;
 
   // Ref for color settings to handle color-only updates separately
-  const colorSettingsRef = useRef({ colorMode, paletteSize, saturation, brightness, colorPalette });
+  const colorSettingsRef = useRef({
+    colorMode: DEFAULT_SETTINGS.colorMode,
+    paletteSize: DEFAULT_SETTINGS.paletteSize,
+    saturation: DEFAULT_SETTINGS.saturation,
+    brightness: DEFAULT_SETTINGS.brightness,
+    colorPalette: DEFAULT_SETTINGS.colorPalette
+  });
   // Ref for frame cell size to handle frame-only updates separately
-  const frameCellSizeRef = useRef(frameCellSize);
+  const frameCellSizeRef = useRef(DEFAULT_SETTINGS.frameCellSize);
   // Ref for frame color settings to handle frame color-only updates separately
   const frameColorSettingsRef = useRef<FrameColorOptions>({
-    palette: frameColorPalette,
-    hueShift: frameHueShift,
-    saturation: frameSaturation,
-    brightness: frameBrightness,
+    palette: DEFAULT_SETTINGS.frameColorPalette,
+    hueShift: DEFAULT_SETTINGS.frameHueShift,
+    saturation: DEFAULT_SETTINGS.frameSaturation,
+    brightness: DEFAULT_SETTINGS.frameBrightness,
   });
 
   // Process the current image with current settings
@@ -518,8 +546,13 @@ export function useStainedGlass(): UseStainedGlassReturn {
 
   // Update settings
   const setSettings = useCallback((newSettings: Partial<StainedGlassSettings>) => {
-    setSettingsState((prev) => ({ ...prev, ...newSettings }));
-  }, []);
+    setSettingsState((prev) => {
+      const merged = { ...prev, ...newSettings };
+      // Push to history for undo/redo
+      pushSettings(merged);
+      return merged;
+    });
+  }, [pushSettings]);
 
   // Export image
   const exportImage = useCallback(
@@ -550,5 +583,9 @@ export function useStainedGlass(): UseStainedGlassReturn {
     setSettings,
     loadImage,
     exportImage,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 }

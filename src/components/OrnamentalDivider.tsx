@@ -1,6 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DividerProps {
   className?: string;
@@ -19,18 +21,27 @@ export function Divider({ className }: DividerProps) {
 interface SectionHeaderProps {
   children: React.ReactNode;
   className?: string;
+  onReset?: () => void;
 }
 
-export function SectionHeader({ children, className }: SectionHeaderProps) {
+export function SectionHeader({ children, className, onReset }: SectionHeaderProps) {
   return (
-    <h3
-      className={cn(
-        'text-xs tracking-[0.15em] uppercase text-muted-foreground mb-3',
-        className
+    <div className={cn('flex items-center justify-between mb-3', className)}>
+      <h3 className="text-xs tracking-[0.15em] uppercase text-muted-foreground">
+        {children}
+      </h3>
+      {onReset && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onReset}
+          className="h-6 w-6 text-muted-foreground hover:text-foreground opacity-60 hover:opacity-100"
+          title="Reset to defaults"
+        >
+          <RotateCcw className="h-3 w-3" />
+        </Button>
       )}
-    >
-      {children}
-    </h3>
+    </div>
   );
 }
 

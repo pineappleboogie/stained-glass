@@ -54,29 +54,27 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Florentine Renaissance Palette - Dark Mode */
-    --background: 20 25% 8%;          /* Deep umber */
-    --foreground: 38 25% 88%;         /* Warm ivory */
-    --card: 15 20% 12%;               /* Dark mahogany */
-    --card-foreground: 38 25% 88%;
-    --popover: 15 18% 11%;
-    --popover-foreground: 38 25% 88%;
-    --primary: 350 35% 55%;           /* Rose gold */
-    --primary-foreground: 20 30% 10%; /* Deep brown */
-    --secondary: 20 18% 16%;          /* Walnut */
-    --secondary-foreground: 38 18% 80%;
-    --muted: 20 12% 20%;              /* Umber shadow */
-    --muted-foreground: 25 15% 55%;   /* Dusty rose */
-    --accent: 42 45% 50%;             /* Warm brass */
-    --accent-foreground: 20 30% 10%;  /* Deep umber */
-    --destructive: 0 50% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 25 20% 22%;             /* Bronze shadow */
-    --input: 20 15% 18%;
-    --ring: 350 35% 50%;              /* Rose glow */
-  }
+.dark {
+  /* Florentine Renaissance Palette - Dark Mode */
+  --background: 20 25% 8%;          /* Deep umber */
+  --foreground: 38 25% 88%;         /* Warm ivory */
+  --card: 15 20% 12%;               /* Dark mahogany */
+  --card-foreground: 38 25% 88%;
+  --popover: 15 18% 11%;
+  --popover-foreground: 38 25% 88%;
+  --primary: 350 35% 55%;           /* Rose gold */
+  --primary-foreground: 20 30% 10%; /* Deep brown */
+  --secondary: 20 18% 16%;          /* Walnut */
+  --secondary-foreground: 38 18% 80%;
+  --muted: 20 12% 20%;              /* Umber shadow */
+  --muted-foreground: 25 15% 55%;   /* Dusty rose */
+  --accent: 42 45% 50%;             /* Warm brass */
+  --accent-foreground: 20 30% 10%;  /* Deep umber */
+  --destructive: 0 50% 45%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 25 20% 22%;             /* Bronze shadow */
+  --input: 20 15% 18%;
+  --ring: 350 35% 50%;              /* Rose glow */
 }
 
 body {

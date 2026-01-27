@@ -154,3 +154,28 @@ export interface PresetTemplate {
   description: string;
   settings: Partial<StainedGlassSettings>;
 }
+
+// Section-to-settings mapping for reset functionality
+export const SECTION_SETTINGS = {
+  cellGeneration: ['cellCount', 'pointDistribution', 'edgeInfluence', 'relaxationIterations'] as const,
+  imageProcessing: ['preBlur', 'contrast', 'edgeMethod', 'edgeSensitivity'] as const,
+  leadLines: ['lineWidth', 'lineColor'] as const,
+  frame: ['frameStyle', 'frameWidth', 'frameCellSize', 'frameColorPalette', 'frameHueShift', 'frameSaturation', 'frameBrightness'] as const,
+  color: ['colorMode', 'paletteSize', 'saturation', 'brightness', 'colorPalette'] as const,
+} as const;
+
+export type SettingsSection = keyof typeof SECTION_SETTINGS;
+
+/**
+ * Get default values for a specific section
+ */
+export function getDefaultsForSection(section: SettingsSection): Partial<StainedGlassSettings> {
+  const keys = SECTION_SETTINGS[section];
+  const defaults: Partial<StainedGlassSettings> = {};
+
+  for (const key of keys) {
+    (defaults as Record<string, unknown>)[key] = DEFAULT_SETTINGS[key];
+  }
+
+  return defaults;
+}

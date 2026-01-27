@@ -1,6 +1,7 @@
 'use client';
 
 import { useStainedGlass } from '@/hooks/useStainedGlass';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { DropZone } from '@/components/DropZone';
 import { Preview } from '@/components/Preview';
 import { ControlPanel } from '@/components/ControlPanel';
@@ -14,7 +15,17 @@ export default function Home() {
     setSettings,
     loadImage,
     exportImage,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useStainedGlass();
+
+  // Keyboard shortcuts for undo/redo
+  useKeyboardShortcuts({
+    onUndo: canUndo ? undo : undefined,
+    onRedo: canRedo ? redo : undefined,
+  });
 
   const hasImage = !!originalImageUrl;
 
@@ -56,6 +67,7 @@ export default function Home() {
               onExport={exportImage}
               onReplaceImage={loadImage}
               disabled={processingState.isLoading}
+              svgString={svgString}
             />
           </aside>
         </div>

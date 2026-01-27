@@ -1,4 +1,18 @@
 /**
+ * Copy SVG string to clipboard
+ * Returns true if successful, false otherwise
+ */
+export async function copySVGToClipboard(svgString: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(svgString);
+    return true;
+  } catch (error) {
+    console.error('Failed to copy SVG to clipboard:', error);
+    return false;
+  }
+}
+
+/**
  * Download SVG as a file
  */
 export function downloadSVG(svgString: string, filename: string = 'stained-glass.svg'): void {
