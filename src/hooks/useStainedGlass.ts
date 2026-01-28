@@ -28,6 +28,7 @@ interface UseStainedGlassReturn {
   // State
   settings: StainedGlassSettings;
   svgString: string | null;
+  coloredCells: ColoredCell[] | null;
   originalImageUrl: string | null;
   processingState: ProcessingState;
   imageDimensions: { width: number; height: number } | null;
@@ -610,6 +611,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
   return {
     settings,
     svgString,
+    coloredCells: coloredCellsRef.current,
     originalImageUrl,
     processingState,
     imageDimensions,

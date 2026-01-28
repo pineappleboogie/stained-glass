@@ -1058,6 +1058,23 @@ export function ControlPanel({
                         disabled={disabled}
                       />
                     </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <Label htmlFor="useWebGL" className="text-sm">
+                        WebGL Preview
+                      </Label>
+                      <Switch
+                        id="useWebGL"
+                        checked={settings.lighting.useWebGL}
+                        onCheckedChange={(checked) =>
+                          onSettingsChange({
+                            lighting: { ...settings.lighting, useWebGL: checked },
+                            activePreset: 'custom',
+                          })
+                        }
+                        disabled={disabled}
+                      />
+                    </div>
                   </>
                 )}
 

@@ -2,21 +2,35 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { ThreePreview } from './ThreePreview';
+import type { ColoredCell, LightSettings } from '@/types';
 
 interface PreviewProps {
   svgString: string | null;
+  coloredCells: ColoredCell[] | null;
   originalImageUrl: string | null;
   compareMode: boolean;
   isProcessing: boolean;
+  lighting: LightSettings;
+  imageDimensions: { width: number; height: number } | null;
+  lineWidth: number;
+  lineColor: string;
   className?: string;
+  onWebGLCanvasReady?: (canvas: HTMLCanvasElement) => void;
 }
 
 export function Preview({
   svgString,
+  coloredCells,
   originalImageUrl,
   compareMode,
   isProcessing,
+  lighting,
+  imageDimensions,
+  lineWidth,
+  lineColor,
   className,
+  onWebGLCanvasReady,
 }: PreviewProps) {
   const [sliderPosition, setSliderPosition] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +57,9 @@ export function Preview({
     isDragging.current = false;
   }, []);
 
+  // Determine if we should use WebGL preview
+  const useWebGL = lighting.enabled && lighting.rays.enabled && lighting.useWebGL;
+
   return (
     <div
       ref={containerRef}
@@ -67,8 +84,20 @@ export function Preview({
       <div
         className="relative w-full h-full flex items-center justify-center"
       >
-        {/* Stained glass layer (bottom) */}
-        {svgString ? (
+        {/* Stained glass layer (bottom) - WebGL or SVG */}
+        {useWebGL && coloredCells && imageDimensions ? (
+          <div className="absolute inset-4 flex items-center justify-center">
+            <ThreePreview
+              coloredCells={coloredCells}
+              lighting={lighting}
+              width={imageDimensions.width}
+              height={imageDimensions.height}
+              lineWidth={lineWidth}
+              lineColor={lineColor}
+              onCanvasReady={onWebGLCanvasReady}
+            />
+          </div>
+        ) : svgString ? (
           <div
             className="absolute inset-4 flex items-center justify-center"
           >
@@ -86,7 +115,7 @@ export function Preview({
         ) : null}
 
         {/* Original image overlay (clipped by slider) - only in compare mode */}
-        {compareMode && originalImageUrl && svgString && (
+        {compareMode && originalImageUrl && (svgString || (useWebGL && coloredCells)) && (
           <div
             className="absolute inset-4 flex items-center justify-center overflow-hidden"
             style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
@@ -101,7 +130,7 @@ export function Preview({
         )}
 
         {/* Slider divider line */}
-        {compareMode && originalImageUrl && svgString && (
+        {compareMode && originalImageUrl && (svgString || (useWebGL && coloredCells)) && (
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_4px_rgba(0,0,0,0.5)] z-10 cursor-ew-resize"
             style={{ left: `${sliderPosition}%`, transform: 'translateX(-50%)' }}

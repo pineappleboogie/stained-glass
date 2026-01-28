@@ -10,8 +10,10 @@ export default function Home() {
   const {
     settings,
     svgString,
+    coloredCells,
     originalImageUrl,
     processingState,
+    imageDimensions,
     setSettings,
     loadImage,
     exportImage,
@@ -44,9 +46,14 @@ export default function Home() {
           <div className="flex-1 min-w-0 flex flex-col">
             <Preview
               svgString={svgString}
+              coloredCells={coloredCells}
               originalImageUrl={originalImageUrl}
               compareMode={settings.compareMode}
               isProcessing={processingState.isLoading || processingState.isProcessing}
+              lighting={settings.lighting}
+              imageDimensions={imageDimensions}
+              lineWidth={settings.lineWidth}
+              lineColor={settings.lineColor}
               className="flex-1 min-h-0"
             />
 

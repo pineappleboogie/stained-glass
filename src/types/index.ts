@@ -80,6 +80,7 @@ export interface LightSettings {
   intensity: number; // 0-2 (0-200%)
   ambient: number; // 0-1 (0-100%)
   darkMode: boolean; // Dark background with enhanced glow
+  useWebGL: boolean; // Use WebGL preview with 3D god rays
   rays: {
     enabled: boolean;
     count: number; // 3-12
@@ -103,6 +104,7 @@ export const DEFAULT_LIGHT_SETTINGS: LightSettings = {
   intensity: 1,
   ambient: 0.3,
   darkMode: false,
+  useWebGL: false,
   rays: {
     enabled: false,
     count: 5,
