@@ -132,8 +132,8 @@ export function ControlPanel({
 
       {/* Main Controls */}
       <div className="flex-1 overflow-y-auto px-5 pb-6">
-        {/* Compare Original Button */}
-        <div className="py-3">
+        {/* Quick Actions */}
+        <div className="pt-4 pb-2 space-y-2">
           <Button
             variant={settings.compareMode ? 'default' : 'outline'}
             className="w-full text-sm"
@@ -143,31 +143,29 @@ export function ControlPanel({
             <SplitSquareHorizontal className="w-4 h-4 mr-2" />
             {settings.compareMode ? 'Exit Compare' : 'Compare Original'}
           </Button>
+          {onReplaceImage && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                className="w-full text-sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImagePlus className="w-4 h-4 mr-2" />
+                Replace Image
+              </Button>
+            </>
+          )}
         </div>
 
-        {/* Replace Image Button */}
-        {onReplaceImage && (
-          <div className="py-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              className="w-full text-sm"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <ImagePlus className="w-4 h-4 mr-2" />
-              Replace Image
-            </Button>
-          </div>
-        )}
-
         {/* Presets Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader>Presets</SectionHeader>
           <div className="space-y-2">
             <Select
@@ -198,7 +196,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Cell Generation Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader onReset={() => handleSectionReset('cellGeneration')}>Cell Generation</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -296,7 +294,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Image Processing Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader onReset={() => handleSectionReset('imageProcessing')}>Image Processing</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -391,7 +389,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Lead Lines Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader onReset={() => handleSectionReset('leadLines')}>Lead Lines</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -442,7 +440,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Frame Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader onReset={() => handleSectionReset('frame')}>Frame</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -639,7 +637,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Color Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader onReset={() => handleSectionReset('color')}>Color</SectionHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -779,7 +777,7 @@ export function ControlPanel({
         <Divider />
 
         {/* Lighting Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader onReset={() => handleSectionReset('lighting')}>Lighting</SectionHeader>
           <div className="space-y-4">
             {/* Enable Lighting Toggle */}
@@ -1152,7 +1150,7 @@ export function ControlPanel({
         <Divider />
 
         {/* View & Export Section */}
-        <section className="py-4">
+        <section className="py-3">
           <SectionHeader>Export</SectionHeader>
           <div className="space-y-4">
             {/* Copy SVG - Primary Action */}

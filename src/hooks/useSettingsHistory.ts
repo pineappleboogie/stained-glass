@@ -50,18 +50,27 @@ export function useSettingsHistory({
   // Can redo if we're not at the end of history
   const canRedo = historyIndex < history.length - 1;
 
+  // Ref to track current history index for use in callbacks (avoids stale closure)
+  const historyIndexRef = useRef(historyIndex);
+  useEffect(() => {
+    historyIndexRef.current = historyIndex;
+  }, [historyIndex]);
+
   /**
    * Commit pending settings to history
    */
   const commitToHistory = useCallback((settings: StainedGlassSettings) => {
+    // Use ref to get current index (avoids stale closure from debounce)
+    const currentIndex = historyIndexRef.current;
+
     setHistory((prev) => {
       // Don't add if identical to current position
-      if (settingsEqual(prev[historyIndex], settings)) {
+      if (settingsEqual(prev[currentIndex], settings)) {
         return prev;
       }
 
       // Truncate any future history if we're not at the end
-      const newHistory = prev.slice(0, historyIndex + 1);
+      const newHistory = prev.slice(0, currentIndex + 1);
 
       // Add new settings
       newHistory.push(settings);
@@ -78,7 +87,7 @@ export function useSettingsHistory({
       // Move to the new end of history
       return Math.min(prev + 1, maxHistorySize - 1);
     });
-  }, [historyIndex, maxHistorySize]);
+  }, [maxHistorySize]);
 
   /**
    * Push new settings (debounced to batch rapid changes)

@@ -108,7 +108,7 @@ export const DEFAULT_LIGHT_SETTINGS: LightSettings = {
     count: 5,
     intensity: 0.5,
     spread: 30,
-    length: 0.7,
+    length: 1.0,
   },
   glow: {
     enabled: false,

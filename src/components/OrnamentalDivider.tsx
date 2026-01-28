@@ -10,9 +10,9 @@ interface DividerProps {
 
 export function Divider({ className }: DividerProps) {
   return (
-    <div className={cn('flex items-center gap-3 my-5', className)}>
+    <div className={cn('flex items-center gap-3 my-4', className)}>
       <div className="flex-1 divider" />
-      <span className="text-border text-xs">◆</span>
+      <span className="text-border/50 text-[10px]">◆</span>
       <div className="flex-1 divider" />
     </div>
   );
@@ -27,7 +27,7 @@ interface SectionHeaderProps {
 export function SectionHeader({ children, className, onReset }: SectionHeaderProps) {
   return (
     <div className={cn('flex items-center justify-between mb-3', className)}>
-      <h3 className="text-xs tracking-[0.15em] uppercase text-muted-foreground">
+      <h3 className="text-xs tracking-[0.18em] uppercase text-muted-foreground font-medium">
         {children}
       </h3>
       {onReset && (

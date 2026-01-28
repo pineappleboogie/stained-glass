@@ -14,6 +14,14 @@ export interface GodRay {
 }
 
 /**
+ * Dual-layer ray set for depth effect
+ */
+export interface GodRaySet {
+  backRays: GodRay[]; // Behind glass - light coming from source
+  frontRays: GodRay[]; // In front of glass - light projecting toward viewer
+}
+
+/**
  * A cluster of cells for sampling dominant colors
  */
 export interface CellCluster {
@@ -132,16 +140,18 @@ function getLightSourcePosition(
 }
 
 /**
- * Generate volumetric god rays from cell clusters
+ * Generate dual-layer volumetric god rays from cell clusters
+ * Back rays: behind the glass, light coming from source
+ * Front rays: in front of glass, projecting toward viewer
  */
 export function generateGodRays(
   clusters: CellCluster[],
   lighting: LightSettings,
   width: number,
   height: number
-): GodRay[] {
+): GodRaySet {
   if (!lighting.enabled || !lighting.rays.enabled || clusters.length === 0) {
-    return [];
+    return { backRays: [], frontRays: [] };
   }
 
   const effectiveAngle = getEffectiveAngle(lighting);
@@ -159,38 +169,64 @@ export function generateGodRays(
   const rayCount = Math.min(lighting.rays.count, sortedClusters.length);
   const selectedClusters = sortedClusters.slice(0, rayCount);
 
-  // Generate rays
+  // Calculate base dimensions
   const diagonal = Math.sqrt(width * width + height * height);
-  const rayLength = diagonal * lighting.rays.length;
-  const baseWidth = (width / rayCount) * (lighting.rays.spread / 45); // Spread affects width
+  const frontRayLength = diagonal * lighting.rays.length;
+  const backRayLength = frontRayLength * 0.25; // Back rays are shorter
+  const baseWidth = (width / rayCount) * (lighting.rays.spread / 45);
 
-  return selectedClusters.map((cluster, index) => {
+  const backRays: GodRay[] = [];
+  const frontRays: GodRay[] = [];
+
+  selectedClusters.forEach((cluster, index) => {
     // Calculate direction from light source to cluster
-    let direction: number;
+    let directionToCluster: number;
     if (isCenter) {
       // For center light, spread rays evenly
-      direction = (index / rayCount) * 2 * Math.PI;
+      directionToCluster = (index / rayCount) * 2 * Math.PI;
     } else {
       // Calculate angle from light source through cluster
       const dx = cluster.centroid.x - lightSource.x;
       const dy = cluster.centroid.y - lightSource.y;
-      direction = Math.atan2(dy, dx);
+      directionToCluster = Math.atan2(dy, dx);
     }
 
-    // Calculate ray origin (at light source position for non-center, or at center for center)
-    const origin = isCenter
-      ? { x: width / 2, y: height / 2 }
-      : lightSource;
+    // Direction away from light (toward viewer) - this is for front rays
+    const directionAwayFromLight = directionToCluster;
+    // Direction toward light - this is for back rays
+    const directionTowardLight = directionToCluster + Math.PI;
 
-    return {
-      origin,
-      direction,
-      color: cluster.dominantColor,
-      opacity: lighting.rays.intensity * 0.6, // Base opacity
-      width: baseWidth * (0.5 + Math.random() * 0.5), // Some variation
-      length: rayLength * (0.7 + Math.random() * 0.3), // Some variation
+    const rayWidth = baseWidth * (0.5 + Math.random() * 0.5);
+    const lengthVariation = 0.7 + Math.random() * 0.3;
+
+    // Back ray: originates behind the glass (offset toward light source), points toward glass
+    const backOffset = backRayLength * 0.3;
+    const backOrigin = {
+      x: cluster.centroid.x + Math.cos(directionTowardLight) * backOffset,
+      y: cluster.centroid.y + Math.sin(directionTowardLight) * backOffset,
     };
+
+    backRays.push({
+      origin: backOrigin,
+      direction: directionToCluster, // Points toward the glass
+      color: cluster.dominantColor,
+      opacity: lighting.rays.intensity * 0.8, // Higher opacity for back rays
+      width: rayWidth * 0.7, // Narrower at source
+      length: backRayLength * lengthVariation,
+    });
+
+    // Front ray: originates at the glass surface, projects toward viewer
+    frontRays.push({
+      origin: { ...cluster.centroid },
+      direction: directionAwayFromLight, // Points away from light (toward viewer)
+      color: cluster.dominantColor,
+      opacity: lighting.rays.intensity * 0.5, // Lower opacity for front rays
+      width: rayWidth,
+      length: frontRayLength * lengthVariation,
+    });
   });
+
+  return { backRays, frontRays };
 }
 
 /**
@@ -221,9 +257,10 @@ function rgbToString(color: RGB, alpha: number = 1): string {
 }
 
 /**
- * Render god rays as SVG elements
+ * Render back rays (behind glass) as SVG elements
+ * These create the "light source behind" effect
  */
-export function renderGodRaysToSVG(
+export function renderBackRaysToSVG(
   rays: GodRay[],
   width: number,
   height: number,
@@ -241,9 +278,9 @@ export function renderGodRaysToSVG(
     // Calculate perpendicular offset for trapezoid width
     const perpAngle = ray.direction + Math.PI / 2;
     const halfWidth = ray.width / 2;
-    const endHalfWidth = ray.width * 1.5; // Rays widen at the end
+    const endHalfWidth = ray.width * 2; // Back rays widen toward the glass
 
-    // Trapezoid points (origin is narrow, end is wide)
+    // Trapezoid points (origin is narrow, end is wider)
     const x1 = ray.origin.x + Math.cos(perpAngle) * halfWidth;
     const y1 = ray.origin.y + Math.sin(perpAngle) * halfWidth;
     const x2 = ray.origin.x - Math.cos(perpAngle) * halfWidth;
@@ -253,30 +290,119 @@ export function renderGodRaysToSVG(
     const x4 = endX + Math.cos(perpAngle) * endHalfWidth;
     const y4 = endY + Math.sin(perpAngle) * endHalfWidth;
 
-    const gradientId = `rayGradient${index}`;
-    const opacity = darkMode ? ray.opacity * 1.3 : ray.opacity;
+    const gradientId = `backRayGradient${index}`;
+    const opacity = darkMode ? ray.opacity * 1.4 : ray.opacity;
 
-    // Lighten the ray color for better visibility
-    const lightColor = {
-      r: Math.min(255, ray.color.r + 50),
-      g: Math.min(255, ray.color.g + 50),
-      b: Math.min(255, ray.color.b + 50),
+    // Brighten the ray color significantly for back rays (light source)
+    const brightColor = {
+      r: Math.min(255, ray.color.r + 80),
+      g: Math.min(255, ray.color.g + 80),
+      b: Math.min(255, ray.color.b + 80),
     };
 
     return `
     <linearGradient id="${gradientId}" x1="${ray.origin.x}" y1="${ray.origin.y}" x2="${endX}" y2="${endY}" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="${rgbToString(lightColor, opacity)}" />
-      <stop offset="100%" stop-color="${rgbToString(lightColor, 0)}" />
+      <stop offset="0%" stop-color="${rgbToString(brightColor, opacity * 0.8)}" />
+      <stop offset="50%" stop-color="${rgbToString(brightColor, opacity)}" />
+      <stop offset="100%" stop-color="${rgbToString(brightColor, opacity * 0.3)}" />
     </linearGradient>
     <polygon points="${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}"
       fill="url(#${gradientId})"
       filter="url(#rayFilter)" />`;
   });
 
-  const blendMode = darkMode ? 'screen' : 'screen';
-
   return `
-  <g class="light-rays" style="mix-blend-mode: ${blendMode}">
+  <g class="back-light-rays" style="mix-blend-mode: screen">
     ${rayElements.join('')}
   </g>`;
+}
+
+/**
+ * Render front rays (projecting toward viewer) as SVG elements
+ * These create the volumetric "light in the room" effect
+ */
+export function renderFrontRaysToSVG(
+  rays: GodRay[],
+  width: number,
+  height: number,
+  darkMode: boolean
+): string {
+  if (rays.length === 0) {
+    return '';
+  }
+
+  const rayElements = rays.map((ray, index) => {
+    // Calculate ray end point
+    const endX = ray.origin.x + Math.cos(ray.direction) * ray.length;
+    const endY = ray.origin.y + Math.sin(ray.direction) * ray.length;
+
+    // Calculate perpendicular offset for trapezoid width
+    const perpAngle = ray.direction + Math.PI / 2;
+    const halfWidth = ray.width / 2;
+    const endHalfWidth = ray.width * 3.5; // Front rays spread wide (light diffusion)
+
+    // Trapezoid points (origin is narrow at glass, end is wide)
+    const x1 = ray.origin.x + Math.cos(perpAngle) * halfWidth;
+    const y1 = ray.origin.y + Math.sin(perpAngle) * halfWidth;
+    const x2 = ray.origin.x - Math.cos(perpAngle) * halfWidth;
+    const y2 = ray.origin.y - Math.sin(perpAngle) * halfWidth;
+    const x3 = endX - Math.cos(perpAngle) * endHalfWidth;
+    const y3 = endY - Math.sin(perpAngle) * endHalfWidth;
+    const x4 = endX + Math.cos(perpAngle) * endHalfWidth;
+    const y4 = endY + Math.sin(perpAngle) * endHalfWidth;
+
+    const gradientId = `frontRayGradient${index}`;
+    const glowId = `rayGlow${index}`;
+    const opacity = darkMode ? ray.opacity * 1.3 : ray.opacity;
+
+    // Lighten the ray color for visibility
+    const lightColor = {
+      r: Math.min(255, ray.color.r + 50),
+      g: Math.min(255, ray.color.g + 50),
+      b: Math.min(255, ray.color.b + 50),
+    };
+
+    // Glow at origin (where light exits glass)
+    const glowRadius = ray.width * 1.5;
+    const glowElement = `
+    <radialGradient id="${glowId}" cx="${ray.origin.x}" cy="${ray.origin.y}" r="${glowRadius}" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="${rgbToString(lightColor, opacity * 0.8)}" />
+      <stop offset="100%" stop-color="${rgbToString(lightColor, 0)}" />
+    </radialGradient>
+    <circle cx="${ray.origin.x}" cy="${ray.origin.y}" r="${glowRadius}" fill="url(#${glowId})" />`;
+
+    return `
+    <linearGradient id="${gradientId}" x1="${ray.origin.x}" y1="${ray.origin.y}" x2="${endX}" y2="${endY}" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="${rgbToString(lightColor, opacity)}" />
+      <stop offset="30%" stop-color="${rgbToString(lightColor, opacity * 0.6)}" />
+      <stop offset="70%" stop-color="${rgbToString(lightColor, opacity * 0.2)}" />
+      <stop offset="100%" stop-color="${rgbToString(lightColor, 0)}" />
+    </linearGradient>
+    ${glowElement}
+    <polygon points="${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}"
+      fill="url(#${gradientId})"
+      filter="url(#rayFilter)" />`;
+  });
+
+  // Use soft-light blend for front rays to create volumetric effect
+  const blendMode = darkMode ? 'screen' : 'soft-light';
+
+  return `
+  <g class="front-light-rays" style="mix-blend-mode: ${blendMode}">
+    ${rayElements.join('')}
+  </g>`;
+}
+
+/**
+ * Legacy function for backwards compatibility
+ * Renders all rays in the old single-layer style
+ */
+export function renderGodRaysToSVG(
+  rays: GodRay[],
+  width: number,
+  height: number,
+  darkMode: boolean
+): string {
+  // For backwards compatibility, render as front rays
+  return renderFrontRaysToSVG(rays, width, height, darkMode);
 }
