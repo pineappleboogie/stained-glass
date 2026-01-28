@@ -17,6 +17,7 @@ export default function Home() {
     setSettings,
     loadImage,
     exportImage,
+    setWebGLCanvas,
     undo,
     redo,
     canUndo,
@@ -54,6 +55,7 @@ export default function Home() {
               imageDimensions={imageDimensions}
               lineWidth={settings.lineWidth}
               lineColor={settings.lineColor}
+              onWebGLCanvasReady={setWebGLCanvas}
               className="flex-1 min-h-0"
             />
 

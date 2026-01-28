@@ -23,6 +23,7 @@ import { generateSVG } from '@/lib/svg/generator';
 import { downloadSVG, downloadPNG } from '@/lib/svg/exporter';
 import { generateFrame, type FrameElement, type FrameColorOptions } from '@/lib/svg/frames';
 import { useImageWorker } from './useWorker';
+import { exportWebGLToPNG } from '@/lib/three/exporter';
 
 interface UseStainedGlassReturn {
   // State
@@ -37,6 +38,7 @@ interface UseStainedGlassReturn {
   setSettings: (settings: Partial<StainedGlassSettings>) => void;
   loadImage: (file: File) => Promise<void>;
   exportImage: (format: ExportFormat) => Promise<void>;
+  setWebGLCanvas: (canvas: HTMLCanvasElement | null) => void;
 
   // History
   undo: () => void;
@@ -90,6 +92,8 @@ export function useStainedGlass(): UseStainedGlassReturn {
   const lineSettingsRef = useRef({ lineWidth: DEFAULT_SETTINGS.lineWidth, lineColor: DEFAULT_SETTINGS.lineColor });
   // Ref for lighting settings (SVG-only updates, no reprocessing needed)
   const lightingSettingsRef = useRef<LightSettings>(DEFAULT_LIGHT_SETTINGS);
+  // Ref for WebGL canvas (for PNG export when WebGL preview is active)
+  const webGLCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Merge settings with defaults to handle missing properties
   const safeSettings = { ...DEFAULT_SETTINGS, ...settings };
@@ -588,24 +592,38 @@ export function useStainedGlass(): UseStainedGlassReturn {
     });
   }, [pushSettings]);
 
+  // Set WebGL canvas ref for PNG export
+  const setWebGLCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    webGLCanvasRef.current = canvas;
+  }, []);
+
+  // Check if WebGL mode is active
+  const isWebGLActive = settings.lighting.enabled && settings.lighting.rays.enabled && settings.lighting.useWebGL;
+
   // Export image
   const exportImage = useCallback(
     async (format: ExportFormat) => {
-      if (!svgString || !loadedImageRef.current) return;
+      if (!loadedImageRef.current) return;
 
       const { width, height } = loadedImageRef.current;
 
       try {
         if (format === 'svg') {
+          if (!svgString) return;
           downloadSVG(svgString);
         } else {
-          await downloadPNG(svgString, width, height);
+          // Use WebGL canvas if available and WebGL mode is active
+          if (isWebGLActive && webGLCanvasRef.current) {
+            await exportWebGLToPNG(webGLCanvasRef.current);
+          } else if (svgString) {
+            await downloadPNG(svgString, width, height);
+          }
         }
       } catch (error) {
         console.error('Export error:', error);
       }
     },
-    [svgString]
+    [svgString, isWebGLActive]
   );
 
   return {
@@ -618,6 +636,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
     setSettings,
     loadImage,
     exportImage,
+    setWebGLCanvas,
     undo,
     redo,
     canUndo,
