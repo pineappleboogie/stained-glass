@@ -69,14 +69,6 @@ export function generateSVG(cells: ColoredCell[], options: SVGOptions): string {
   const bgColor = lighting?.enabled && lighting.darkMode ? '#1a1a1a' : '#ffffff';
   svgParts.push(`  <rect width="${width}" height="${height}" fill="${bgColor}"/>`);
 
-  // Glow layer (rendered before cells for proper blend mode)
-  if (lighting?.enabled && lighting.glow.enabled) {
-    const glowLayer = renderGlowLayer(litCells, lighting, width, height);
-    if (glowLayer) {
-      svgParts.push(glowLayer);
-    }
-  }
-
   // Add frame elements (background layer)
   if (frameElements.length > 0) {
     svgParts.push('  <g class="frame">');
@@ -97,7 +89,15 @@ export function generateSVG(cells: ColoredCell[], options: SVGOptions): string {
   }
   svgParts.push('  </g>');
 
-  // Light rays layer (rendered on top of cells but under lead lines conceptually)
+  // Glow layer (rendered on top of cells so glow bleeds over the lead lines)
+  if (lighting?.enabled && lighting.glow.enabled) {
+    const glowLayer = renderGlowLayer(litCells, lighting, width, height);
+    if (glowLayer) {
+      svgParts.push(glowLayer);
+    }
+  }
+
+  // Light rays layer (rendered on top)
   if (lighting?.enabled && lighting.rays.enabled) {
     const clusters = clusterCells(litCells, Math.ceil(Math.sqrt(lighting.rays.count * 2)), width, height);
     const rays = generateGodRays(clusters, lighting, width, height);

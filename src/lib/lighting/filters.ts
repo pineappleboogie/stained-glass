@@ -10,13 +10,20 @@ export function generateLightingDefs(lighting: LightSettings): string {
 
   const defs: string[] = [];
 
-  // Glow filter for color glow effect
+  // Glow filter for color glow effect - creates soft bleeding light
   if (lighting.glow.enabled && lighting.glow.intensity > 0) {
-    const blurRadius = lighting.glow.radius * lighting.glow.intensity;
+    // Use radius directly for more visible blur, plus a minimum for softness
+    const blurRadius = Math.max(5, lighting.glow.radius);
+    // Boost brightness to make light appear to emanate
+    const brightnessBoost = 1 + lighting.glow.intensity * 0.5;
     defs.push(`
-    <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+    <filter id="glowFilter" x="-100%" y="-100%" width="300%" height="300%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="${blurRadius}" result="blur"/>
-      <feColorMatrix in="blur" type="saturate" values="1.2" result="saturatedBlur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="${brightnessBoost} 0 0 0 0
+                0 ${brightnessBoost} 0 0 0
+                0 0 ${brightnessBoost} 0 0
+                0 0 0 1 0" result="brightBlur"/>
     </filter>`);
   }
 
@@ -43,9 +50,11 @@ export function generateLightingDefs(lighting: LightSettings): string {
 
 /**
  * Get the blend mode for glow layer based on dark mode
+ * Using 'screen' for both modes creates the light-bleeding effect over dark lines
  */
-export function getGlowBlendMode(darkMode: boolean): string {
-  return darkMode ? 'screen' : 'multiply';
+export function getGlowBlendMode(_darkMode: boolean): string {
+  // Screen blend adds light, making colors brighter and bleeding over dark lead lines
+  return 'screen';
 }
 
 /**

@@ -35,15 +35,16 @@ export function renderGlowLayer(
 
   const blendMode = getGlowBlendMode(lighting.darkMode);
   const intensityMultiplier = getGlowIntensityMultiplier(lighting.darkMode);
-  const glowOpacity = lighting.glow.intensity * intensityMultiplier * 0.7;
+  // Higher base opacity for more visible glow
+  const glowOpacity = Math.min(1, lighting.glow.intensity * intensityMultiplier);
 
   // Create glow paths for each cell
   const glowPaths = cells.map((cell) => {
     const pathData = polygonToPath(cell.polygon);
     const { r, g, b } = cell.color;
 
-    // Boost saturation for glow effect
-    const boostedColor = boostSaturation(r, g, b, 1.3);
+    // Boost saturation and lighten for more vivid glow effect
+    const boostedColor = boostSaturationAndLightness(r, g, b, 1.4, 1.2);
     const fillColor = rgbToHex(boostedColor.r, boostedColor.g, boostedColor.b);
 
     return `<path d="${pathData}" fill="${fillColor}" />`;
@@ -56,9 +57,15 @@ export function renderGlowLayer(
 }
 
 /**
- * Boost saturation of a color for more vivid glow
+ * Boost saturation and lightness of a color for vivid glow effect
  */
-function boostSaturation(r: number, g: number, b: number, factor: number): { r: number; g: number; b: number } {
+function boostSaturationAndLightness(
+  r: number,
+  g: number,
+  b: number,
+  satFactor: number,
+  lightFactor: number
+): { r: number; g: number; b: number } {
   // Convert to HSL
   const rNorm = r / 255;
   const gNorm = g / 255;
@@ -68,7 +75,7 @@ function boostSaturation(r: number, g: number, b: number, factor: number): { r: 
   const min = Math.min(rNorm, gNorm, bNorm);
   let h = 0;
   let s = 0;
-  const l = (max + min) / 2;
+  let l = (max + min) / 2;
 
   if (max !== min) {
     const d = max - min;
@@ -87,8 +94,9 @@ function boostSaturation(r: number, g: number, b: number, factor: number): { r: 
     }
   }
 
-  // Boost saturation
-  s = Math.min(1, s * factor);
+  // Boost saturation and lightness
+  s = Math.min(1, s * satFactor);
+  l = Math.min(1, l * lightFactor);
 
   // Convert back to RGB
   if (s === 0) {

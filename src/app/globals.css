@@ -66,7 +66,7 @@
   --primary-foreground: 20 30% 10%; /* Deep brown */
   --secondary: 20 18% 16%;          /* Walnut */
   --secondary-foreground: 38 18% 80%;
-  --muted: 20 12% 20%;              /* Umber shadow */
+  --muted: 20 12% 10%;              /* Umber shadow */
   --muted-foreground: 25 15% 55%;   /* Dusty rose */
   --accent: 42 45% 50%;             /* Warm brass */
   --accent-foreground: 20 30% 10%;  /* Deep umber */

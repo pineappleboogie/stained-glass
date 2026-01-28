@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LightController } from '@/components/ui/angle-picker';
 import {
   Select,
   SelectContent,
@@ -28,7 +29,6 @@ import type {
   EdgeMethod,
   FrameStyle,
   SettingsSection,
-  LightPreset,
 } from '@/types';
 import { getDefaultsForSection } from '@/types';
 import { useRef, useState, useEffect } from 'react';
@@ -64,6 +64,17 @@ export function ControlPanel({
   // Avoid hydration mismatch for theme - use layout effect equivalent
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
+
+  // Sync lighting dark background with app theme
+  useEffect(() => {
+    if (!mounted) return;
+    const isDark = resolvedTheme === 'dark';
+    if (settings.lighting.darkMode !== isDark) {
+      onSettingsChange({
+        lighting: { ...settings.lighting, darkMode: isDark },
+      });
+    }
+  }, [resolvedTheme, mounted]);
 
   const toggleTheme = () => {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
@@ -121,6 +132,19 @@ export function ControlPanel({
 
       {/* Main Controls */}
       <div className="flex-1 overflow-y-auto px-5 pb-6">
+        {/* Compare Original Button */}
+        <div className="py-3">
+          <Button
+            variant={settings.compareMode ? 'default' : 'outline'}
+            className="w-full text-sm"
+            onClick={() => onSettingsChange({ compareMode: !settings.compareMode })}
+            disabled={disabled}
+          >
+            <SplitSquareHorizontal className="w-4 h-4 mr-2" />
+            {settings.compareMode ? 'Exit Compare' : 'Compare Original'}
+          </Button>
+        </div>
+
         {/* Replace Image Button */}
         {onReplaceImage && (
           <div className="py-3">
@@ -779,90 +803,55 @@ export function ControlPanel({
 
             {settings.lighting.enabled && (
               <>
-                {/* Dark Mode Toggle */}
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="lightingDarkMode" className="text-sm">
-                    Dark Background
-                  </Label>
-                  <Switch
-                    id="lightingDarkMode"
-                    checked={settings.lighting.darkMode}
-                    onCheckedChange={(checked) =>
-                      onSettingsChange({
-                        lighting: { ...settings.lighting, darkMode: checked },
-                        activePreset: 'custom',
-                      })
-                    }
-                    disabled={disabled}
-                  />
-                </div>
-
-                {/* Light Preset */}
+                {/* Light Controller - Visual representation of lighting */}
                 <div className="space-y-2">
-                  <Label htmlFor="lightPreset" className="text-sm">
-                    Light Direction
-                  </Label>
-                  <Select
-                    value={settings.lighting.preset}
-                    onValueChange={(value: LightPreset) =>
-                      onSettingsChange({
-                        lighting: { ...settings.lighting, preset: value },
-                        activePreset: 'custom',
-                      })
-                    }
-                    disabled={disabled}
-                  >
-                    <SelectTrigger id="lightPreset">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="top-left">Top Left</SelectItem>
-                      <SelectItem value="top">Top</SelectItem>
-                      <SelectItem value="top-right">Top Right</SelectItem>
-                      <SelectItem value="right">Right</SelectItem>
-                      <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                      <SelectItem value="bottom">Bottom</SelectItem>
-                      <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                      <SelectItem value="left">Left</SelectItem>
-                      <SelectItem value="center">Center</SelectItem>
-                      <SelectItem value="custom">Custom Angle</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Custom Angle (only when preset is 'custom') */}
-                {settings.lighting.preset === 'custom' && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-baseline">
-                      <Label htmlFor="lightAngle" className="text-sm">
-                        Light Angle
-                      </Label>
-                      <span className="text-sm text-muted-foreground">
-                        {settings.lighting.angle}°
-                      </span>
+                  <div className="flex justify-between items-baseline">
+                    <Label htmlFor="lightAngle" className="text-sm">
+                      Light Position
+                    </Label>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={359}
+                        value={settings.lighting.angle}
+                        onChange={(e) => {
+                          const value = Math.max(0, Math.min(359, parseInt(e.target.value) || 0));
+                          onSettingsChange({
+                            lighting: { ...settings.lighting, angle: value, preset: 'custom' },
+                            activePreset: 'custom',
+                          });
+                        }}
+                        disabled={disabled}
+                        className="w-14 h-7 text-center text-xs"
+                      />
+                      <span className="text-sm text-muted-foreground">°</span>
                     </div>
-                    <Slider
+                  </div>
+                  <div className="flex justify-center py-2">
+                    <LightController
                       id="lightAngle"
-                      min={0}
-                      max={360}
-                      step={5}
-                      value={[settings.lighting.angle]}
-                      onValueChange={([value]) =>
+                      angle={settings.lighting.angle}
+                      elevation={settings.lighting.elevation}
+                      intensity={settings.lighting.intensity}
+                      ambient={settings.lighting.ambient}
+                      onAngleChange={(value) =>
                         onSettingsChange({
-                          lighting: { ...settings.lighting, angle: value },
+                          lighting: { ...settings.lighting, angle: value, preset: 'custom' },
                           activePreset: 'custom',
                         })
                       }
                       disabled={disabled}
+                      size={140}
                     />
                   </div>
-                )}
+                </div>
 
-                {/* Light Elevation */}
+                {/* Light Height */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-baseline">
                     <Label htmlFor="lightElevation" className="text-sm">
-                      Light Elevation
+                      Light Height
                     </Label>
                     <span className="text-sm text-muted-foreground">
                       {settings.lighting.elevation}°
@@ -872,11 +861,11 @@ export function ControlPanel({
                     id="lightElevation"
                     min={0}
                     max={90}
-                    step={5}
+                    step={1}
                     value={[settings.lighting.elevation]}
                     onValueChange={([value]) =>
                       onSettingsChange({
-                        lighting: { ...settings.lighting, elevation: value },
+                        lighting: { ...settings.lighting, elevation: value, preset: 'custom' },
                         activePreset: 'custom',
                       })
                     }
@@ -1166,16 +1155,6 @@ export function ControlPanel({
         <section className="py-4">
           <SectionHeader>Export</SectionHeader>
           <div className="space-y-4">
-            <Button
-              variant={settings.compareMode ? 'default' : 'outline'}
-              className="w-full text-sm"
-              onClick={() => onSettingsChange({ compareMode: !settings.compareMode })}
-              disabled={disabled}
-            >
-              <SplitSquareHorizontal className="w-4 h-4 mr-2" />
-              {settings.compareMode ? 'Exit Compare' : 'Compare Original'}
-            </Button>
-
             {/* Copy SVG - Primary Action */}
             <Button
               className="w-full"

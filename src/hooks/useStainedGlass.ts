@@ -385,10 +385,17 @@ export function useStainedGlass(): UseStainedGlassReturn {
     setSvgString(svg);
   }, [frameStyle, frameWidth, frameCellSize, frameColorPalette, frameHueShift, frameSaturation, frameBrightness]);
 
+  // Track previous frame settings to avoid unnecessary regeneration
+  const prevFrameSettingsRef = useRef<string>('');
+
   // Handle frame-only updates (debounced)
   useEffect(() => {
-    // Only regenerate frame if we have cells and frame is enabled
-    if (coloredCellsRef.current && frameStyle !== 'none') {
+    // Create a stable key for current frame settings
+    const frameKey = `${frameCellSize}-${frameColorPalette}-${frameHueShift}-${frameSaturation}-${frameBrightness}-${frameStyle}`;
+
+    // Only regenerate frame if frame settings actually changed and frame is enabled
+    if (coloredCellsRef.current && frameStyle !== 'none' && frameKey !== prevFrameSettingsRef.current) {
+      prevFrameSettingsRef.current = frameKey;
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
@@ -445,9 +452,17 @@ export function useStainedGlass(): UseStainedGlassReturn {
     setSvgString(svg);
   }, [colorMode, paletteSize, saturation, brightness, colorPalette]);
 
+  // Track previous color settings to avoid unnecessary resampling
+  const prevColorSettingsRef = useRef<string>('');
+
   // Handle color-only updates (debounced)
   useEffect(() => {
-    if (voronoiCellsRef.current) {
+    // Create a stable key for current color settings
+    const colorKey = `${colorMode}-${paletteSize}-${saturation}-${brightness}-${colorPalette}`;
+
+    // Only resample if color settings actually changed (not just callback recreation)
+    if (voronoiCellsRef.current && colorKey !== prevColorSettingsRef.current) {
+      prevColorSettingsRef.current = colorKey;
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
@@ -460,7 +475,7 @@ export function useStainedGlass(): UseStainedGlassReturn {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [resampleColors]);
+  }, [colorMode, paletteSize, saturation, brightness, colorPalette, resampleColors]);
 
   // Regenerate SVG only (for line width/color/lighting changes - no reprocessing needed)
   const regenerateSVG = useCallback(() => {
