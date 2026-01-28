@@ -38,6 +38,7 @@ import { copySVGToClipboard } from '@/lib/svg/exporter';
 import { ImagePlus, SplitSquareHorizontal, Copy, Check, Download, Sun, Moon, Lightbulb } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
+import { useWebGLSupport } from '@/hooks/useWebGLSupport';
 
 interface ControlPanelProps {
   settings: StainedGlassSettings;
@@ -60,6 +61,7 @@ export function ControlPanel({
   const [copySuccess, setCopySuccess] = useState(false);
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const webGLSupport = useWebGLSupport();
 
   // Avoid hydration mismatch for theme - use layout effect equivalent
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -1062,17 +1064,20 @@ export function ControlPanel({
                     <div className="flex items-center justify-between pt-2">
                       <Label htmlFor="useWebGL" className="text-sm">
                         WebGL Preview
+                        {!webGLSupport.supported && (
+                          <span className="text-xs text-muted-foreground ml-1">(not supported)</span>
+                        )}
                       </Label>
                       <Switch
                         id="useWebGL"
-                        checked={settings.lighting.useWebGL}
+                        checked={settings.lighting.useWebGL && webGLSupport.supported}
                         onCheckedChange={(checked) =>
                           onSettingsChange({
                             lighting: { ...settings.lighting, useWebGL: checked },
                             activePreset: 'custom',
                           })
                         }
-                        disabled={disabled}
+                        disabled={disabled || !webGLSupport.supported}
                       />
                     </div>
                   </>
