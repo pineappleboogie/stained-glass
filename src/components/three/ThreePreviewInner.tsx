@@ -2,20 +2,23 @@
 
 import { useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { VoronoiMesh } from './VoronoiMesh';
+import { GodRaysScene } from './GodRaysScene';
 import type { ColoredCell, LightSettings } from '@/types';
 
 interface SceneProps {
   cells: ColoredCell[];
+  lighting: LightSettings;
+  width: number;
+  height: number;
   lineWidth: number;
   lineColor: string;
   onCanvasReady?: (canvas: HTMLCanvasElement) => void;
 }
 
 /**
- * Inner scene component that renders cells
+ * Inner scene component that renders cells with god rays
  */
-function Scene({ cells, lineWidth, lineColor, onCanvasReady }: SceneProps) {
+function Scene({ cells, lighting, width, height, lineWidth, lineColor, onCanvasReady }: SceneProps) {
   const { gl } = useThree();
   const reportedRef = useRef(false);
 
@@ -28,7 +31,14 @@ function Scene({ cells, lineWidth, lineColor, onCanvasReady }: SceneProps) {
   }, [gl, onCanvasReady]);
 
   return (
-    <VoronoiMesh cells={cells} lineWidth={lineWidth} lineColor={lineColor} />
+    <GodRaysScene
+      cells={cells}
+      lighting={lighting}
+      width={width}
+      height={height}
+      lineWidth={lineWidth}
+      lineColor={lineColor}
+    />
   );
 }
 
@@ -48,7 +58,7 @@ interface ThreePreviewInnerProps {
  */
 export default function ThreePreviewInner({
   coloredCells,
-  lighting: _lighting,
+  lighting,
   width,
   height,
   lineWidth = 2,
@@ -76,6 +86,9 @@ export default function ThreePreviewInner({
     >
       <Scene
         cells={coloredCells}
+        lighting={lighting}
+        width={width}
+        height={height}
         lineWidth={lineWidth}
         lineColor={lineColor}
         onCanvasReady={onCanvasReady}
